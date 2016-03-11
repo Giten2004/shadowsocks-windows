@@ -10,15 +10,13 @@ using Shadowsocks.Model;
 
 namespace Shadowsocks.Controller.Strategy
 {
-    using Statistics = Dictionary<string, List<StatisticsRecord>>;
-
     internal class StatisticsStrategy : IStrategy, IDisposable
     {
         private readonly ShadowsocksController _controller;
         private Server _currentServer;
         private readonly Timer _timer;
-        private Statistics _filteredStatistics;
-        private AvailabilityStatistics Service => _controller.availabilityStatistics;
+        private Dictionary<string, List<StatisticsRecord>> _filteredStatistics;
+
         private int ChoiceKeptMilliseconds
             => (int)TimeSpan.FromMinutes(_controller.StatisticsConfiguration.ChoiceKeptMinutes).TotalMilliseconds;
 
@@ -42,8 +40,8 @@ namespace Shadowsocks.Controller.Strategy
         private void LoadStatistics()
         {
             _filteredStatistics =
-                Service.FilteredStatistics ??
-                Service.RawStatistics ??
+                _controller.availabilityStatistics.FilteredStatistics ??
+                _controller.availabilityStatistics.RawStatistics ??
                 _filteredStatistics;
         }
 
@@ -63,7 +61,7 @@ namespace Shadowsocks.Controller.Strategy
             foreach (var calculation in config.Calculations)
             {
                 var name = calculation.Key;
-                var field = typeof (StatisticsRecord).GetField(name);
+                var field = typeof(StatisticsRecord).GetField(name);
                 dynamic value = field?.GetValue(averageRecord);
                 var factor = calculation.Value;
                 if (value == null || factor.Equals(0)) continue;
@@ -87,15 +85,15 @@ namespace Shadowsocks.Controller.Strategy
             try
             {
                 var serversWithStatistics = (from server in servers
-                    let id = server.Identifier()
-                    where _filteredStatistics.ContainsKey(id)
-                    let score = GetScore(server.Identifier(), _filteredStatistics[server.Identifier()])
-                    where score != null
-                    select new
-                    {
-                        server,
-                        score
-                    }).ToArray();
+                                             let id = server.Identifier()
+                                             where _filteredStatistics.ContainsKey(id)
+                                             let score = GetScore(server.Identifier(), _filteredStatistics[server.Identifier()])
+                                             where score != null
+                                             select new
+                                             {
+                                                 server,
+                                                 score
+                                             }).ToArray();
 
                 if (serversWithStatistics.Length < 2)
                 {
@@ -122,6 +120,8 @@ namespace Shadowsocks.Controller.Strategy
                 Console.WriteLine(log);
             }
         }
+
+        #region Implement methods of interface IStrategy
 
         public string ID => "com.shadowsocks.strategy.scbs";
 
@@ -158,6 +158,8 @@ namespace Shadowsocks.Controller.Strategy
         public void UpdateLatency(Server server, TimeSpan latency)
         {
         }
+
+        #endregion
 
         public void Dispose()
         {

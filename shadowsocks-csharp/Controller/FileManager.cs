@@ -4,7 +4,7 @@ using System.IO.Compression;
 
 namespace Shadowsocks.Controller
 {
-    public class FileManager
+    public static class FileManager
     {
         public static bool ByteArrayToFile(string fileName, byte[] content)
         {
@@ -40,6 +40,5 @@ namespace Shadowsocks.Controller
                 }
             }
         }
-
     }
 }

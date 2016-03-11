@@ -4,7 +4,7 @@ using System.Net.Sockets;
 
 namespace Shadowsocks.Controller
 {
-    class PortForwarder : Listener.Service
+    class PortForwarder : IService
     {
         int _targetPort;
 

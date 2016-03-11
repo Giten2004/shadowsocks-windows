@@ -9,14 +9,16 @@ namespace Shadowsocks.Controller.Strategy
 {
     class BalancingStrategy : IStrategy
     {
-        ShadowsocksController _controller;
-        Random _random;
+        private ShadowsocksController _controller;
+        private Random _random;
 
         public BalancingStrategy(ShadowsocksController controller)
         {
             _controller = controller;
             _random = new Random();
         }
+
+        #region Implement methods of interface IStrategy
 
         public string Name
         {
@@ -67,5 +69,7 @@ namespace Shadowsocks.Controller.Strategy
         {
             // do nothing
         }
+
+        #endregion
     }
 }

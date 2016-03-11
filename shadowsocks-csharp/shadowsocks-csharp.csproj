@@ -171,7 +171,12 @@
     <Compile Include="3rd\zxing\ResultPointCallback.cs" />
     <Compile Include="3rd\zxing\WriterException.cs" />
     <Compile Include="Controller\Service\AvailabilityStatistics.cs" />
+    <Compile Include="Controller\Service\IService.cs" />
+    <Compile Include="Controller\Service\LRUCache.cs" />
+    <Compile Include="Controller\Service\UDPRelayHandler.cs" />
+    <Compile Include="Controller\Service\UDPState.cs" />
     <Compile Include="Controller\Strategy\HighAvailabilityStrategy.cs" />
+    <Compile Include="Controller\Strategy\ServerStatus.cs" />
     <Compile Include="Controller\Strategy\StatisticsStrategy.cs" />
     <Compile Include="Controller\System\AutoStartup.cs" />
     <Compile Include="Controller\FileManager.cs" />
@@ -181,7 +186,9 @@
     <Compile Include="Controller\Logging.cs" />
     <Compile Include="Controller\Service\PortForwarder.cs" />
     <Compile Include="Controller\Service\UDPRelay.cs" />
-    <Compile Include="Controller\Service\UpdateChecker.cs" />
+    <Compile Include="Controller\Service\UpdateChecker.cs">
+      <SubType>Component</SubType>
+    </Compile>
     <Compile Include="Encryption\EncryptorBase.cs" />
     <Compile Include="Encryption\EncryptorFactory.cs" />
     <Compile Include="Encryption\IVEncryptor.cs" />

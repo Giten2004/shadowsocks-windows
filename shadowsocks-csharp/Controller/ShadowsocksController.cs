@@ -15,13 +15,22 @@ using Shadowsocks.Util;
 
 namespace Shadowsocks.Controller
 {
+    public class PathEventArgs : EventArgs
+    {
+        public string Path { get; private set; }
+
+        public PathEventArgs(string path)
+        {
+            Path = path;
+        }
+    }
+
+    // controller:
+    // handle user actions
+    // manipulates UI
+    // interacts with low level logic
     public class ShadowsocksController
     {
-        // controller:
-        // handle user actions
-        // manipulates UI
-        // interacts with low level logic
-
         private Thread _ramThread;
 
         private Listener _listener;
@@ -30,6 +39,7 @@ namespace Shadowsocks.Controller
         private StrategyManager _strategyManager;
         private PolipoRunner polipoRunner;
         private GFWListUpdater gfwListUpdater;
+
         public AvailabilityStatistics availabilityStatistics = AvailabilityStatistics.Instance;
         public StatisticsStrategyConfiguration StatisticsConfiguration { get; private set; }
 
@@ -37,13 +47,7 @@ namespace Shadowsocks.Controller
         public long outboundCounter = 0;
 
         private bool stopped = false;
-
-        private bool _systemProxyIsDirty = false;
-
-        public class PathEventArgs : EventArgs
-        {
-            public string Path;
-        }
+        private bool _systemProxyIsDirty = false;      
 
         public event EventHandler ConfigChanged;
         public event EventHandler EnableStatusChanged;
@@ -53,11 +57,8 @@ namespace Shadowsocks.Controller
         // when user clicked Edit PAC, and PAC file has already created
         public event EventHandler<PathEventArgs> PACFileReadyToOpen;
         public event EventHandler<PathEventArgs> UserRuleFileReadyToOpen;
-
-        public event EventHandler<GFWListUpdater.ResultEventArgs> UpdatePACFromGFWListCompleted;
-
+        public event EventHandler<ResultEventArgs> UpdatePACFromGFWListCompleted;
         public event ErrorEventHandler UpdatePACFromGFWListError;
-
         public event ErrorEventHandler Errored;
 
         public ShadowsocksController()
@@ -72,14 +73,7 @@ namespace Shadowsocks.Controller
         {
             Reload();
         }
-
-        protected void ReportError(Exception e)
-        {
-            if (Errored != null)
-            {
-                Errored(this, new ErrorEventArgs(e));
-            }
-        }
+              
 
         public Server GetCurrentServer()
         {
@@ -231,7 +225,7 @@ namespace Shadowsocks.Controller
             string pacFilename = _pacServer.TouchPACFile();
             if (PACFileReadyToOpen != null)
             {
-                PACFileReadyToOpen(this, new PathEventArgs() { Path = pacFilename });
+                PACFileReadyToOpen(this, new PathEventArgs(pacFilename) );
             }
         }
 
@@ -240,7 +234,7 @@ namespace Shadowsocks.Controller
             string userRuleFilename = _pacServer.TouchUserRuleFile();
             if (UserRuleFileReadyToOpen != null)
             {
-                UserRuleFileReadyToOpen(this, new PathEventArgs() { Path = userRuleFilename });
+                UserRuleFileReadyToOpen(this, new PathEventArgs(userRuleFilename));
             }
         }
 
@@ -333,7 +327,7 @@ namespace Shadowsocks.Controller
             }
         }
 
-        protected void Reload()
+        private void Reload()
         {
             // some logic in configuration updated the config when saving, we need to read it again
             _config = Configuration.Load();
@@ -380,7 +374,7 @@ namespace Shadowsocks.Controller
 
                 TCPRelay tcpRelay = new TCPRelay(this);
                 UDPRelay udpRelay = new UDPRelay(this);
-                List<Listener.Service> services = new List<Listener.Service>();
+                List<IService> services = new List<IService>();
                 services.Add(tcpRelay);
                 services.Add(udpRelay);
                 services.Add(_pacServer);
@@ -413,7 +407,7 @@ namespace Shadowsocks.Controller
             Utils.ReleaseMemory(true);
         }
 
-        protected void SaveConfig(Configuration newConfig)
+        private void SaveConfig(Configuration newConfig)
         {
             Configuration.Save(newConfig);
             Reload();
@@ -442,7 +436,7 @@ namespace Shadowsocks.Controller
             UpdateSystemProxy();
         }
 
-        private void pacServer_PACUpdateCompleted(object sender, GFWListUpdater.ResultEventArgs e)
+        private void pacServer_PACUpdateCompleted(object sender, ResultEventArgs e)
         {
             if (UpdatePACFromGFWListCompleted != null)
                 UpdatePACFromGFWListCompleted(this, e);
@@ -514,5 +508,12 @@ namespace Shadowsocks.Controller
             }
         }
 
+        private void ReportError(Exception e)
+        {
+            if (Errored != null)
+            {
+                Errored(this, new ErrorEventArgs(e));
+            }
+        }
     }
 }

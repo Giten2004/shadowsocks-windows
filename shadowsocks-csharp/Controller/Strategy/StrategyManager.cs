@@ -7,7 +7,7 @@ namespace Shadowsocks.Controller.Strategy
 {
     class StrategyManager
     {
-        List<IStrategy> _strategies;
+        private List<IStrategy> _strategies;
         public StrategyManager(ShadowsocksController controller)
         {
             _strategies = new List<IStrategy>();
@@ -16,6 +16,7 @@ namespace Shadowsocks.Controller.Strategy
             _strategies.Add(new StatisticsStrategy(controller));
             // TODO: load DLL plugins
         }
+
         public IList<IStrategy> GetStrategies()
         {
             return _strategies;

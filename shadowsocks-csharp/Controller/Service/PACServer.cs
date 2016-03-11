@@ -11,14 +11,14 @@ using Shadowsocks.Util;
 
 namespace Shadowsocks.Controller
 {
-    class PACServer : Listener.Service
+    class PACServer : IService
     {
         public static readonly string PAC_FILE = "pac.txt";
         public static readonly string USER_RULE_FILE = "user-rule.txt";
         public static readonly string USER_ABP_FILE = "abp.txt";
 
-        FileSystemWatcher PACFileWatcher;
-        FileSystemWatcher UserRuleFileWatcher;
+        private FileSystemWatcher _PACFileWatcher;
+        private FileSystemWatcher _UserRuleFileWatcher;
         private Configuration _config;
 
         public event EventHandler PACFileChanged;
@@ -34,6 +34,34 @@ namespace Shadowsocks.Controller
         {
             this._config = config;
         }
+
+        public string TouchPACFile()
+        {
+            if (File.Exists(PAC_FILE))
+            {
+                return PAC_FILE;
+            }
+            else
+            {
+                FileManager.UncompressFile(PAC_FILE, Resources.proxy_pac_txt);
+                return PAC_FILE;
+            }
+        }
+
+        public string TouchUserRuleFile()
+        {
+            if (File.Exists(USER_RULE_FILE))
+            {
+                return USER_RULE_FILE;
+            }
+            else
+            {
+                File.WriteAllText(USER_RULE_FILE, Resources.user_rule);
+                return USER_RULE_FILE;
+            }
+        }
+
+        #region Implement methods of interface IService
 
         public bool Handle(byte[] firstPacket, int length, Socket socket, object state)
         {
@@ -88,31 +116,7 @@ namespace Shadowsocks.Controller
             }
         }
 
-        public string TouchPACFile()
-        {
-            if (File.Exists(PAC_FILE))
-            {
-                return PAC_FILE;
-            }
-            else
-            {
-                FileManager.UncompressFile(PAC_FILE, Resources.proxy_pac_txt);
-                return PAC_FILE;
-            }
-        }
-
-        internal string TouchUserRuleFile()
-        {
-            if (File.Exists(USER_RULE_FILE))
-            {
-                return USER_RULE_FILE;
-            }
-            else
-            {
-                File.WriteAllText(USER_RULE_FILE, Resources.user_rule);
-                return USER_RULE_FILE;
-            }
-        }
+        #endregion 
 
         private string GetPACContent()
         {
@@ -126,7 +130,7 @@ namespace Shadowsocks.Controller
             }
         }
 
-        public void SendResponse(byte[] firstPacket, int length, Socket socket, bool useSocks)
+        private void SendResponse(byte[] firstPacket, int length, Socket socket, bool useSocks)
         {
             try
             {
@@ -169,34 +173,34 @@ Connection: Close
 
         private void WatchPacFile()
         {
-            if (PACFileWatcher != null)
+            if (_PACFileWatcher != null)
             {
-                PACFileWatcher.Dispose();
+                _PACFileWatcher.Dispose();
             }
-            PACFileWatcher = new FileSystemWatcher(Directory.GetCurrentDirectory());
-            PACFileWatcher.NotifyFilter = NotifyFilters.LastWrite | NotifyFilters.FileName | NotifyFilters.DirectoryName;
-            PACFileWatcher.Filter = PAC_FILE;
-            PACFileWatcher.Changed += PACFileWatcher_Changed;
-            PACFileWatcher.Created += PACFileWatcher_Changed;
-            PACFileWatcher.Deleted += PACFileWatcher_Changed;
-            PACFileWatcher.Renamed += PACFileWatcher_Changed;
-            PACFileWatcher.EnableRaisingEvents = true;
+            _PACFileWatcher = new FileSystemWatcher(Directory.GetCurrentDirectory());
+            _PACFileWatcher.NotifyFilter = NotifyFilters.LastWrite | NotifyFilters.FileName | NotifyFilters.DirectoryName;
+            _PACFileWatcher.Filter = PAC_FILE;
+            _PACFileWatcher.Changed += PACFileWatcher_Changed;
+            _PACFileWatcher.Created += PACFileWatcher_Changed;
+            _PACFileWatcher.Deleted += PACFileWatcher_Changed;
+            _PACFileWatcher.Renamed += PACFileWatcher_Changed;
+            _PACFileWatcher.EnableRaisingEvents = true;
         }
 
         private void WatchUserRuleFile()
         {
-            if (UserRuleFileWatcher != null)
+            if (_UserRuleFileWatcher != null)
             {
-                UserRuleFileWatcher.Dispose();
+                _UserRuleFileWatcher.Dispose();
             }
-            UserRuleFileWatcher = new FileSystemWatcher(Directory.GetCurrentDirectory());
-            UserRuleFileWatcher.NotifyFilter = NotifyFilters.LastWrite | NotifyFilters.FileName | NotifyFilters.DirectoryName;
-            UserRuleFileWatcher.Filter = USER_RULE_FILE;
-            UserRuleFileWatcher.Changed += UserRuleFileWatcher_Changed;
-            UserRuleFileWatcher.Created += UserRuleFileWatcher_Changed;
-            UserRuleFileWatcher.Deleted += UserRuleFileWatcher_Changed;
-            UserRuleFileWatcher.Renamed += UserRuleFileWatcher_Changed;
-            UserRuleFileWatcher.EnableRaisingEvents = true;
+            _UserRuleFileWatcher = new FileSystemWatcher(Directory.GetCurrentDirectory());
+            _UserRuleFileWatcher.NotifyFilter = NotifyFilters.LastWrite | NotifyFilters.FileName | NotifyFilters.DirectoryName;
+            _UserRuleFileWatcher.Filter = USER_RULE_FILE;
+            _UserRuleFileWatcher.Changed += UserRuleFileWatcher_Changed;
+            _UserRuleFileWatcher.Created += UserRuleFileWatcher_Changed;
+            _UserRuleFileWatcher.Deleted += UserRuleFileWatcher_Changed;
+            _UserRuleFileWatcher.Renamed += UserRuleFileWatcher_Changed;
+            _UserRuleFileWatcher.EnableRaisingEvents = true;
         }
 
         #region FileSystemWatcher.OnChanged()

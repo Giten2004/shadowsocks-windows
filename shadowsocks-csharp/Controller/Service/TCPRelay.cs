@@ -10,12 +10,12 @@ using Shadowsocks.Model;
 
 namespace Shadowsocks.Controller
 {
-    class TCPRelay : Listener.Service
+    class TCPRelay : IService
     {
         private ShadowsocksController _controller;
         private DateTime _lastSweepTime;
 
-        public ISet<TCPHandler> Handlers
+        public ISet<TCPRelayHandler> Handlers
         {
             get; set;
         }
@@ -23,7 +23,7 @@ namespace Shadowsocks.Controller
         public TCPRelay(ShadowsocksController controller)
         {
             _controller = controller;
-            Handlers = new HashSet<TCPHandler>();
+            Handlers = new HashSet<TCPRelayHandler>();
             _lastSweepTime = DateTime.Now;
         }
 
@@ -38,13 +38,13 @@ namespace Shadowsocks.Controller
                 return false;
             }
             socket.SetSocketOption(SocketOptionLevel.Tcp, SocketOptionName.NoDelay, true);
-            TCPHandler handler = new TCPHandler(this);
+            TCPRelayHandler handler = new TCPRelayHandler(this);
             handler.connection = socket;
             handler.controller = _controller;
             handler.relay = this;
 
             handler.Start(firstPacket, length);
-            IList<TCPHandler> handlersToClose = new List<TCPHandler>();
+            IList<TCPRelayHandler> handlersToClose = new List<TCPRelayHandler>();
             lock (Handlers)
             {
                 Handlers.Add(handler);
@@ -52,7 +52,7 @@ namespace Shadowsocks.Controller
                 if (now - _lastSweepTime > TimeSpan.FromSeconds(1))
                 {
                     _lastSweepTime = now;
-                    foreach (TCPHandler handler1 in Handlers)
+                    foreach (TCPRelayHandler handler1 in Handlers)
                     {
                         if (now - handler1.lastActivity > TimeSpan.FromSeconds(900))
                         {
@@ -61,7 +61,7 @@ namespace Shadowsocks.Controller
                     }
                 }
             }
-            foreach (TCPHandler handler1 in handlersToClose)
+            foreach (TCPRelayHandler handler1 in handlersToClose)
             {
                 Logging.Debug("Closing timed out TCP connection.");
                 handler1.Close();
@@ -85,7 +85,7 @@ namespace Shadowsocks.Controller
         }
     }
 
-    class TCPHandler
+    class TCPRelayHandler
     {
         // public Encryptor encryptor;
         public IEncryptor encryptor;
@@ -136,7 +136,7 @@ namespace Shadowsocks.Controller
         private int _bytesToSend;
         private TCPRelay tcprelay;  // TODO: tcprelay ?= relay
 
-        public TCPHandler(TCPRelay tcprelay)
+        public TCPRelayHandler(TCPRelay tcprelay)
         {
             this.tcprelay = tcprelay;
         }

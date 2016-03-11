@@ -8,9 +8,9 @@ using Shadowsocks.Util;
 
 namespace Shadowsocks.Controller
 {
-    public class Logging
+    public static class Logging
     {
-        public static string LogFilePath;
+        public static string LogFilePath { get; private set; }
 
         public static bool OpenLogFile()
         {
@@ -137,5 +137,4 @@ namespace Shadowsocks.Controller
             base.Write(GetTimestamp() + value);
         }
     }
-
 }

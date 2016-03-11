@@ -12,25 +12,24 @@ using Shadowsocks.Util;
 
 namespace Shadowsocks.Controller
 {
+    public class ResultEventArgs : EventArgs
+    {
+        public bool Success { get; private set; }
+
+        public ResultEventArgs(bool success)
+        {
+            Success = success;
+        }
+    }
+
     public class GFWListUpdater
     {
+        private static readonly IEnumerable<char> IgnoredLineBegins = new[] { '!', '[' };
         private const string GFWLIST_URL = "https://raw.githubusercontent.com/gfwlist/gfwlist/master/gfwlist.txt";
 
         public event EventHandler<ResultEventArgs> UpdateCompleted;
-
-        public event ErrorEventHandler Error;
-
-        public class ResultEventArgs : EventArgs
-        {
-            public bool Success;
-
-            public ResultEventArgs(bool success)
-            {
-                this.Success = success;
-            }
-        }
-
-        private static readonly IEnumerable<char> IgnoredLineBegins = new[] { '!', '[' };
+        public event ErrorEventHandler Error;       
+       
         private void http_DownloadStringCompleted(object sender, DownloadStringCompletedEventArgs e)
         {
             try

@@ -7,30 +7,10 @@ namespace Shadowsocks.Controller.Strategy
 {
     class HighAvailabilityStrategy : IStrategy
     {
-        protected ServerStatus _currentServer;
-        protected Dictionary<Server, ServerStatus> _serverStatus;
-        ShadowsocksController _controller;
-        Random _random;
-
-        public class ServerStatus
-        {
-            // time interval between SYN and SYN+ACK
-            public TimeSpan latency;
-            public DateTime lastTimeDetectLatency;
-
-            // last time anything received
-            public DateTime lastRead;
-
-            // last time anything sent
-            public DateTime lastWrite;
-
-            // connection refused or closed before anything received
-            public DateTime lastFailure;
-
-            public Server server;
-
-            public double score;
-        }
+        private ServerStatus _currentServer;
+        private Dictionary<Server, ServerStatus> _serverStatus;
+        private ShadowsocksController _controller;
+        private Random _random;
 
         public HighAvailabilityStrategy(ShadowsocksController controller)
         {
@@ -38,6 +18,54 @@ namespace Shadowsocks.Controller.Strategy
             _random = new Random();
             _serverStatus = new Dictionary<Server, ServerStatus>();
         }
+
+        /**
+        * once failed, try after 5 min
+        * and (last write - last read) < 5s
+        * and (now - last read) <  5s  // means not stuck
+        * and latency < 200ms, try after 30s
+        */
+        public void ChooseNewServer()
+        {
+            ServerStatus oldServer = _currentServer;
+            List<ServerStatus> servers = new List<ServerStatus>(_serverStatus.Values);
+            DateTime now = DateTime.Now;
+            foreach (var status in servers)
+            {
+                // all of failure, latency, (lastread - lastwrite) normalized to 1000, then
+                // 100 * failure - 2 * latency - 0.5 * (lastread - lastwrite)
+                status.score =
+                    100 * 1000 * Math.Min(5 * 60, (now - status.lastFailure).TotalSeconds)
+                    - 2 * 5 * (Math.Min(2000, status.latency.TotalMilliseconds) / (1 + (now - status.lastTimeDetectLatency).TotalSeconds / 30 / 10) +
+                    -0.5 * 200 * Math.Min(5, (status.lastRead - status.lastWrite).TotalSeconds));
+                Logging.Debug(String.Format("server: {0} latency:{1} score: {2}", status.server.FriendlyName(), status.latency, status.score));
+            }
+            ServerStatus max = null;
+            foreach (var status in servers)
+            {
+                if (max == null)
+                {
+                    max = status;
+                }
+                else
+                {
+                    if (status.score >= max.score)
+                    {
+                        max = status;
+                    }
+                }
+            }
+            if (max != null)
+            {
+                if (_currentServer == null || max.score - _currentServer.score > 200)
+                {
+                    _currentServer = max;
+                    Logging.Info($"HA switching to server: {_currentServer.server.FriendlyName()}");
+                }
+            }
+        }
+
+        #region Implement methods of interface IStrategy
 
         public string Name
         {
@@ -91,52 +119,6 @@ namespace Shadowsocks.Controller.Strategy
             return _currentServer.server;
         }
 
-        /**
-         * once failed, try after 5 min
-         * and (last write - last read) < 5s
-         * and (now - last read) <  5s  // means not stuck
-         * and latency < 200ms, try after 30s
-         */
-        public void ChooseNewServer()
-        {
-            ServerStatus oldServer = _currentServer;
-            List<ServerStatus> servers = new List<ServerStatus>(_serverStatus.Values);
-            DateTime now = DateTime.Now;
-            foreach (var status in servers)
-            {
-                // all of failure, latency, (lastread - lastwrite) normalized to 1000, then
-                // 100 * failure - 2 * latency - 0.5 * (lastread - lastwrite)
-                status.score =
-                    100 * 1000 * Math.Min(5 * 60, (now - status.lastFailure).TotalSeconds)
-                    -2 * 5 * (Math.Min(2000, status.latency.TotalMilliseconds) / (1 + (now - status.lastTimeDetectLatency).TotalSeconds / 30 / 10) +
-                    -0.5 * 200 * Math.Min(5, (status.lastRead - status.lastWrite).TotalSeconds));
-                Logging.Debug(String.Format("server: {0} latency:{1} score: {2}", status.server.FriendlyName(), status.latency, status.score));
-            }
-            ServerStatus max = null;
-            foreach (var status in servers)
-            {
-                if (max == null)
-                {
-                    max = status;
-                }
-                else
-                {
-                    if (status.score >= max.score)
-                    {
-                        max = status;
-                    }
-                }
-            }
-            if (max != null)
-            {
-                if (_currentServer == null || max.score - _currentServer.score > 200)
-                {
-                    _currentServer = max;
-                    Logging.Info($"HA switching to server: {_currentServer.server.FriendlyName()}");
-                }
-            }
-        }
-
         public void UpdateLatency(Model.Server server, TimeSpan latency)
         {
             Logging.Debug($"latency: {server.FriendlyName()} {latency}");
@@ -181,5 +163,7 @@ namespace Shadowsocks.Controller.Strategy
                 status.lastFailure = DateTime.Now;
             }
         }
+
+        #endregion
     }
 }

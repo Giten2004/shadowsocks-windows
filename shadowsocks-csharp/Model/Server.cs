@@ -16,33 +16,6 @@ namespace Shadowsocks.Model
         public string remarks;
         public bool auth;
 
-        public override int GetHashCode()
-        {
-            return server.GetHashCode() ^ server_port;
-        }
-
-        public override bool Equals(object obj)
-        {
-            Server o2 = (Server)obj;
-            return server == o2.server && server_port == o2.server_port;
-        }
-
-        public string FriendlyName()
-        {
-            if (server.IsNullOrEmpty())
-            {
-                return I18N.GetString("New server");
-            }
-            if (remarks.IsNullOrEmpty())
-            {
-                return server + ":" + server_port;
-            }
-            else
-            {
-                return remarks + " (" + server + ":" + server_port + ")";
-            }
-        }
-
         public Server()
         {
             server = "";
@@ -96,9 +69,36 @@ namespace Shadowsocks.Model
             }
         }
 
+        public string FriendlyName()
+        {
+            if (server.IsNullOrEmpty())
+            {
+                return I18N.GetString("New server");
+            }
+            if (remarks.IsNullOrEmpty())
+            {
+                return server + ":" + server_port;
+            }
+            else
+            {
+                return remarks + " (" + server + ":" + server_port + ")";
+            }
+        }
+
         public string Identifier()
         {
             return server + ':' + server_port;
+        }
+
+        public override int GetHashCode()
+        {
+            return server.GetHashCode() ^ server_port;
+        }
+
+        public override bool Equals(object obj)
+        {
+            Server o2 = (Server)obj;
+            return server == o2.server && server_port == o2.server_port;
         }
     }
 }

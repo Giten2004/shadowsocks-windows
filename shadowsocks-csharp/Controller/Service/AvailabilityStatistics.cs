@@ -14,10 +14,9 @@ using Shadowsocks.Util;
 
 namespace Shadowsocks.Controller
 {
-    using Statistics = Dictionary<string, List<StatisticsRecord>>;
-
     public sealed class AvailabilityStatistics : IDisposable
     {
+        public const int TimeoutMilliseconds = 500;
         public const string DateTimePattern = "yyyy-MM-dd HH:mm:ss";
         private const string StatisticsFilesName = "shadowsocks.availability.json";
         public static string AvailabilityStatisticsFile;
@@ -29,7 +28,6 @@ namespace Shadowsocks.Controller
 
         //arguments for ICMP tests
         private int Repeat => Config.RepeatTimesNum;
-        public const int TimeoutMilliseconds = 500;
 
         //records cache for current server in {_monitorInterval} minutes
         private readonly ConcurrentDictionary<string, List<int>> _latencyRecords = new ConcurrentDictionary<string, List<int>>();
@@ -48,20 +46,18 @@ namespace Shadowsocks.Controller
         private TimeSpan RecordingInterval => TimeSpan.FromMinutes(Config.DataCollectionMinutes);
         private Timer _speedMonior;
         private readonly TimeSpan _monitorInterval = TimeSpan.FromSeconds(1);
-        //private Timer _writer; //write RawStatistics to file
-        //private readonly TimeSpan _writingInterval = TimeSpan.FromMinutes(1);
 
         private ShadowsocksController _controller;
         private StatisticsStrategyConfiguration Config => _controller.StatisticsConfiguration;
 
         // Static Singleton Initialization
         public static AvailabilityStatistics Instance { get; } = new AvailabilityStatistics();
-        public Statistics RawStatistics { get; private set; }
-        public Statistics FilteredStatistics { get; private set; }
+        public Dictionary<string, List<StatisticsRecord>> RawStatistics { get; private set; }
+        public Dictionary<string, List<StatisticsRecord>> FilteredStatistics { get; private set; }
 
         private AvailabilityStatistics()
         {
-            RawStatistics = new Statistics();
+            RawStatistics = new Dictionary<string, List<StatisticsRecord>>();
         }
 
         internal void UpdateConfiguration(ShadowsocksController controller)
@@ -107,14 +103,14 @@ namespace Shadowsocks.Controller
                 var bytes = inbound - lastInbound;
                 _lastInboundCounter[id] = inbound;
                 var inboundSpeed = GetSpeedInKiBPerSecond(bytes, _monitorInterval.TotalSeconds);
-                _inboundSpeedRecords.GetOrAdd(id, new List<int> {inboundSpeed}).Add(inboundSpeed);
+                _inboundSpeedRecords.GetOrAdd(id, new List<int> { inboundSpeed }).Add(inboundSpeed);
 
                 var lastOutbound = _lastOutboundCounter[id];
                 var outbound = _outboundCounter[id];
                 bytes = outbound - lastOutbound;
                 _lastOutboundCounter[id] = outbound;
                 var outboundSpeed = GetSpeedInKiBPerSecond(bytes, _monitorInterval.TotalSeconds);
-                _outboundSpeedRecords.GetOrAdd(id, new List<int> {outboundSpeed}).Add(outboundSpeed);
+                _outboundSpeedRecords.GetOrAdd(id, new List<int> { outboundSpeed }).Add(outboundSpeed);
 
                 Logging.Debug(
                     $"{id}: current/max inbound {inboundSpeed}/{_inboundSpeedRecords[id].Max()} KiB/s, current/max outbound {outboundSpeed}/{_outboundSpeedRecords[id].Max()} KiB/s");
@@ -143,7 +139,7 @@ namespace Shadowsocks.Controller
                         var reply = await ping.SendTaskAsync(IP, TimeoutMilliseconds);
                         if (reply.Status.Equals(IPStatus.Success))
                         {
-                            result.RoundtripTime.Add((int?) reply.RoundtripTime);
+                            result.RoundtripTime.Add((int?)reply.RoundtripTime);
                         }
                         else
                         {
@@ -151,7 +147,7 @@ namespace Shadowsocks.Controller
                         }
 
                         //Do ICMPTest in a random frequency
-                        Thread.Sleep(TimeoutMilliseconds + new Random().Next()%TimeoutMilliseconds);
+                        Thread.Sleep(TimeoutMilliseconds + new Random().Next() % TimeoutMilliseconds);
                     }
                     catch (Exception e)
                     {
@@ -261,7 +257,7 @@ namespace Shadowsocks.Controller
             if (RawStatistics == null) return;
             if (FilteredStatistics == null)
             {
-                FilteredStatistics = new Statistics();
+                FilteredStatistics = new Dictionary<string, List<StatisticsRecord>>();
             }
 
             foreach (var serverAndRecords in RawStatistics)
@@ -286,7 +282,7 @@ namespace Shadowsocks.Controller
                     }
                 }
                 var content = File.ReadAllText(path);
-                RawStatistics = JsonConvert.DeserializeObject<Statistics>(content) ?? RawStatistics;
+                RawStatistics = JsonConvert.DeserializeObject<Dictionary<string, List<StatisticsRecord>>>(content) ?? RawStatistics;
             }
             catch (Exception e)
             {
@@ -298,19 +294,8 @@ namespace Shadowsocks.Controller
 
         private static int GetSpeedInKiBPerSecond(long bytes, double seconds)
         {
-            var result = (int) (bytes/seconds)/1024;
+            var result = (int)(bytes / seconds) / 1024;
             return result;
-        }
-
-        private class ICMPResult
-        {
-            internal readonly List<int?> RoundtripTime = new List<int?>();
-            internal readonly Server Server;
-
-            internal ICMPResult(Server server)
-            {
-                Server = server;
-            }
         }
 
         public void Dispose()
@@ -359,6 +344,17 @@ namespace Shadowsocks.Controller
                 _lastOutboundCounter[server.Identifier()] = 0;
             }
             _outboundCounter[server.Identifier()] = count;
+        }
+    }
+
+    class ICMPResult
+    {
+        internal readonly List<int?> RoundtripTime = new List<int?>();
+        internal readonly Server Server;
+
+        internal ICMPResult(Server server)
+        {
+            Server = server;
         }
     }
 }

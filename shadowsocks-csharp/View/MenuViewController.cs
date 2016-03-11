@@ -15,12 +15,11 @@ using Shadowsocks.Util;
 
 namespace Shadowsocks.View
 {
+    // yes this is just a menu view controller
+    // when config form is closed, it moves away from RAM
+    // and it should just do anything related to the config form
     public class MenuViewController
     {
-        // yes this is just a menu view controller
-        // when config form is closed, it moves away from RAM
-        // and it should just do anything related to the config form
-
         private ShadowsocksController controller;
         private UpdateChecker updateChecker;
 
@@ -94,7 +93,7 @@ namespace Shadowsocks.View
             }
         }
 
-        void controller_Errored(object sender, System.IO.ErrorEventArgs e)
+        private void controller_Errored(object sender, System.IO.ErrorEventArgs e)
         {
             MessageBox.Show(e.GetException().ToString(), String.Format(I18N.GetString("Shadowsocks Error: {0}"), e.GetException().Message));
         }
@@ -218,25 +217,25 @@ namespace Shadowsocks.View
             modeItem.Enabled = enableItem.Checked;
         }
 
-        void controller_ShareOverLANStatusChanged(object sender, EventArgs e)
+        private void controller_ShareOverLANStatusChanged(object sender, EventArgs e)
         {
             ShareOverLANItem.Checked = controller.GetConfigurationCopy().shareOverLan;
         }
 
-        void controller_EnableGlobalChanged(object sender, EventArgs e)
+        private void controller_EnableGlobalChanged(object sender, EventArgs e)
         {
             globalModeItem.Checked = controller.GetConfigurationCopy().global;
             PACModeItem.Checked = !globalModeItem.Checked;
         }
 
-        void controller_FileReadyToOpen(object sender, ShadowsocksController.PathEventArgs e)
+        private void controller_FileReadyToOpen(object sender, PathEventArgs e)
         {
             string argument = @"/select, " + e.Path;
 
             System.Diagnostics.Process.Start("explorer.exe", argument);
         }
 
-        void ShowBalloonTip(string title, string content, ToolTipIcon icon, int timeout)
+        private void ShowBalloonTip(string title, string content, ToolTipIcon icon, int timeout)
         {
             _notifyIcon.BalloonTipTitle = title;
             _notifyIcon.BalloonTipText = content;
@@ -244,19 +243,19 @@ namespace Shadowsocks.View
             _notifyIcon.ShowBalloonTip(timeout);
         }
 
-        void controller_UpdatePACFromGFWListError(object sender, System.IO.ErrorEventArgs e)
+        private void controller_UpdatePACFromGFWListError(object sender, System.IO.ErrorEventArgs e)
         {
             ShowBalloonTip(I18N.GetString("Failed to update PAC file"), e.GetException().Message, ToolTipIcon.Error, 5000);
             Logging.LogUsefulException(e.GetException());
         }
 
-        void controller_UpdatePACFromGFWListCompleted(object sender, GFWListUpdater.ResultEventArgs e)
+        private void controller_UpdatePACFromGFWListCompleted(object sender, ResultEventArgs e)
         {
             string result = e.Success ? I18N.GetString("PAC updated") : I18N.GetString("No updates found. Please report to GFWList if you have problems with it.");
             ShowBalloonTip(I18N.GetString("Shadowsocks"), result, ToolTipIcon.Info, 1000);
         }
 
-        void updateChecker_CheckUpdateCompleted(object sender, EventArgs e)
+        private void updateChecker_CheckUpdateCompleted(object sender, EventArgs e)
         {
             if (updateChecker.NewVersionFound)
             {
@@ -269,7 +268,7 @@ namespace Shadowsocks.View
             _isStartupChecking = false;
         }
 
-        void notifyIcon1_BalloonTipClicked(object sender, EventArgs e)
+        private void notifyIcon1_BalloonTipClicked(object sender, EventArgs e)
         {
             if (updateChecker.NewVersionFound)
             {
@@ -377,12 +376,12 @@ namespace Shadowsocks.View
             }
         }
 
-        void logForm_FormClosed(object sender, FormClosedEventArgs e)
+        private void logForm_FormClosed(object sender, FormClosedEventArgs e)
         {
             logForms.Remove((LogForm)sender);
         }
 
-        void configForm_FormClosed(object sender, FormClosedEventArgs e)
+        private void configForm_FormClosed(object sender, FormClosedEventArgs e)
         {
             configForm = null;
             Utils.ReleaseMemory(true);
@@ -604,12 +603,12 @@ namespace Shadowsocks.View
             MessageBox.Show(I18N.GetString("No QRCode found. Try to zoom in or move it to the center of the screen."));
         }
 
-        void splash_FormClosed(object sender, FormClosedEventArgs e)
+        private void splash_FormClosed(object sender, FormClosedEventArgs e)
         {
             ShowConfigForm();
         }
 
-        void openURLFromQRCode(object sender, FormClosedEventArgs e)
+        private void openURLFromQRCode(object sender, FormClosedEventArgs e)
         {
             Process.Start(_urlToOpen);
         }
