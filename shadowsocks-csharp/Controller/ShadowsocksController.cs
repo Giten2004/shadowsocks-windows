@@ -50,7 +50,7 @@ namespace Shadowsocks.Controller
         private bool _systemProxyIsDirty = false;      
 
         public event EventHandler ConfigChanged;
-        public event EventHandler EnableStatusChanged;
+        public event EventHandler SystemProxyStatusChanged;
         public event EventHandler EnableGlobalChanged;
         public event EventHandler ShareOverLANStatusChanged;
 
@@ -65,7 +65,9 @@ namespace Shadowsocks.Controller
         {
             _config = Configuration.Load();
             StatisticsConfiguration = StatisticsStrategyConfiguration.Load();
+
             _strategyManager = new StrategyManager(this);
+
             StartReleasingMemory();
         }
 
@@ -73,7 +75,6 @@ namespace Shadowsocks.Controller
         {
             Reload();
         }
-              
 
         public Server GetCurrentServer()
         {
@@ -153,14 +154,15 @@ namespace Shadowsocks.Controller
             }
         }
 
-        public void ToggleEnable(bool enabled)
+        public void ToggleSystemProxyEnable(bool enabled)
         {
             _config.enabled = enabled;
             UpdateSystemProxy();
             SaveConfig(_config);
-            if (EnableStatusChanged != null)
+
+            if (SystemProxyStatusChanged != null)
             {
-                EnableStatusChanged(this, new EventArgs());
+                SystemProxyStatusChanged(this, new EventArgs());
             }
         }
 
@@ -337,13 +339,16 @@ namespace Shadowsocks.Controller
             {
                 polipoRunner = new PolipoRunner();
             }
+
             if (_pacServer == null)
             {
                 _pacServer = new PACServer();
                 _pacServer.PACFileChanged += pacServer_PACFileChanged;
                 _pacServer.UserRuleFileChanged += pacServer_UserRuleFileChanged;
             }
+
             _pacServer.UpdateConfiguration(_config);
+
             if (gfwListUpdater == null)
             {
                 gfwListUpdater = new GFWListUpdater();
@@ -362,6 +367,7 @@ namespace Shadowsocks.Controller
             // though UseShellExecute is set to true now
             // http://stackoverflow.com/questions/10235093/socket-doesnt-close-after-application-exits-if-a-launched-process-is-open
             polipoRunner.Stop();
+
             try
             {
                 var strategy = GetCurrentStrategy();
@@ -374,11 +380,13 @@ namespace Shadowsocks.Controller
 
                 TCPRelay tcpRelay = new TCPRelay(this);
                 UDPRelay udpRelay = new UDPRelay(this);
+
                 List<IService> services = new List<IService>();
                 services.Add(tcpRelay);
                 services.Add(udpRelay);
                 services.Add(_pacServer);
                 services.Add(new PortForwarder(polipoRunner.RunningPort));
+
                 _listener = new Listener(services);
                 _listener.Start(_config);
             }
@@ -404,6 +412,7 @@ namespace Shadowsocks.Controller
             }
 
             UpdateSystemProxy();
+
             Utils.ReleaseMemory(true);
         }
 

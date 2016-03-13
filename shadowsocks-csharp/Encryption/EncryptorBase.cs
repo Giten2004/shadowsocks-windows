@@ -3,8 +3,7 @@ using System.Text;
 
 namespace Shadowsocks.Encryption
 {
-    public abstract class EncryptorBase
-        : IEncryptor
+    public abstract class EncryptorBase : IEncryptor
     {
         public const int MAX_INPUT_SIZE = 32768;
 
@@ -28,10 +27,14 @@ namespace Shadowsocks.Encryption
             return hash;
         }
 
+        #region Implement methods of interface IEncryptor
+
         public abstract void Encrypt(byte[] buf, int length, byte[] outbuf, out int outlength);
 
         public abstract void Decrypt(byte[] buf, int length, byte[] outbuf, out int outlength);
 
         public abstract void Dispose();
+
+        #endregion
     }
 }

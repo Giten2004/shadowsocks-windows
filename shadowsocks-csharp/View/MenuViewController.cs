@@ -28,8 +28,8 @@ namespace Shadowsocks.View
 
         private bool _isFirstRun;
         private bool _isStartupChecking;
-        private MenuItem enableItem;
-        private MenuItem modeItem;
+        private MenuItem enableSystemProxyItem;
+        private MenuItem systemProxyModeItem;
         private MenuItem AutoStartupItem;
         private MenuItem ShareOverLANItem;
         private MenuItem SeperatorItem;
@@ -55,7 +55,7 @@ namespace Shadowsocks.View
 
             LoadMenu();
 
-            controller.EnableStatusChanged += controller_EnableStatusChanged;
+            controller.SystemProxyStatusChanged += controller_SystemProxyStatusChanged;
             controller.ConfigChanged += controller_ConfigChanged;
             controller.PACFileReadyToOpen += controller_FileReadyToOpen;
             controller.UserRuleFileReadyToOpen += controller_FileReadyToOpen;
@@ -168,8 +168,8 @@ namespace Shadowsocks.View
         private void LoadMenu()
         {
             this.contextMenu1 = new ContextMenu(new MenuItem[] {
-                this.enableItem = CreateMenuItem("Enable System Proxy", new EventHandler(this.EnableItem_Click)),
-                this.modeItem = CreateMenuGroup("Mode", new MenuItem[] {
+                this.enableSystemProxyItem = CreateMenuItem("Enable System Proxy", new EventHandler(this.EnableSystemProxyItem_Click)),
+                this.systemProxyModeItem = CreateMenuGroup("Mode", new MenuItem[] {
                     this.PACModeItem = CreateMenuItem("PAC", new EventHandler(this.PACModeItem_Click)),
                     this.globalModeItem = CreateMenuItem("Global", new EventHandler(this.GlobalModeItem_Click))
                 }),
@@ -211,10 +211,10 @@ namespace Shadowsocks.View
             UpdateTrayIcon();
         }
 
-        private void controller_EnableStatusChanged(object sender, EventArgs e)
+        private void controller_SystemProxyStatusChanged(object sender, EventArgs e)
         {
-            enableItem.Checked = controller.GetConfigurationCopy().enabled;
-            modeItem.Enabled = enableItem.Checked;
+            enableSystemProxyItem.Checked = controller.GetConfigurationCopy().enabled;
+            systemProxyModeItem.Enabled = enableSystemProxyItem.Checked;
         }
 
         private void controller_ShareOverLANStatusChanged(object sender, EventArgs e)
@@ -293,8 +293,8 @@ namespace Shadowsocks.View
         {
             Configuration config = controller.GetConfigurationCopy();
             UpdateServersMenu();
-            enableItem.Checked = config.enabled;
-            modeItem.Enabled = config.enabled;
+            enableSystemProxyItem.Checked = config.enabled;
+            systemProxyModeItem.Enabled = config.enabled;
             globalModeItem.Checked = config.global;
             PACModeItem.Checked = !config.global;
             ShareOverLANItem.Checked = config.shareOverLan;
@@ -448,9 +448,9 @@ namespace Shadowsocks.View
             }
         }
 
-        private void EnableItem_Click(object sender, EventArgs e)
+        private void EnableSystemProxyItem_Click(object sender, EventArgs e)
         {
-            controller.ToggleEnable(!enableItem.Checked);
+            controller.ToggleSystemProxyEnable(!enableSystemProxyItem.Checked);
         }
 
         private void GlobalModeItem_Click(object sender, EventArgs e)

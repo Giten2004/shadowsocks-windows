@@ -11,12 +11,14 @@ namespace Shadowsocks.Controller
 {
     public static class SystemProxy
     {
-
         [DllImport("wininet.dll")]
         public static extern bool InternetSetOption(IntPtr hInternet, int dwOption, IntPtr lpBuffer, int dwBufferLength);
+
         public const int INTERNET_OPTION_SETTINGS_CHANGED = 39;
         public const int INTERNET_OPTION_REFRESH = 37;
-        static bool _settingsReturn, _refreshReturn;
+
+        private static bool _settingsReturn;
+        private static bool _refreshReturn;
 
         public static void NotifyIE()
         {
@@ -26,10 +28,13 @@ namespace Shadowsocks.Controller
             _refreshReturn = InternetSetOption(IntPtr.Zero, INTERNET_OPTION_REFRESH, IntPtr.Zero, 0);
         }
 
-        private static readonly DateTime UnixEpoch
-            = new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc);
-        public static long ToUnixEpochMilliseconds(this DateTime dt)
-            => (long)(dt - UnixEpoch).TotalMilliseconds;
+        private static readonly DateTime UnixEpoch = new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+
+        //public static long ToUnixEpochMilliseconds(this DateTime dt)
+        //{
+        //    return (long)(dt - UnixEpoch).TotalMilliseconds;
+        //}
+
         private static string GetTimestamp(DateTime value)
         {
             return value.ToString("yyyyMMddHHmmssfff");
@@ -47,8 +52,7 @@ namespace Shadowsocks.Controller
 
             try
             {
-                var registry = Registry.CurrentUser
-                    .OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Internet Settings", true);
+                var registry = Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Internet Settings", true);
                 if (enabled)
                 {
                     if (global)
@@ -64,7 +68,9 @@ namespace Shadowsocks.Controller
                             pacUrl = config.pacUrl;
                         else
                             pacUrl = $"http://127.0.0.1:{config.localPort}/pac?t={GetTimestamp(DateTime.Now)}";
+
                         registry.SetValue("ProxyEnable", 0);
+
                         var readProxyServer = registry.GetValue("ProxyServer");
                         registry.SetValue("ProxyServer", "");
                         registry.SetValue("AutoConfigURL", pacUrl);
@@ -94,9 +100,9 @@ namespace Shadowsocks.Controller
 
         private static void CopyProxySettingFromLan()
         {
-            var registry = Registry.CurrentUser
-                .OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Internet Settings\Connections", true);
+            var registry = Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Internet Settings\Connections", true);
             var defaultValue = registry.GetValue("DefaultConnectionSettings");
+
             try
             {
                 var connections = registry.GetValueNames();
@@ -128,8 +134,7 @@ namespace Shadowsocks.Controller
         /// <param name="set">Provide 'true' if you want to check the 'Automatically detect Proxy' check box. To uncheck, pass 'false'</param>
         private static void IEAutoDetectProxy(bool set)
         {
-            var registry = Registry.CurrentUser
-                .OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Internet Settings\Connections", true);
+            var registry = Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Internet Settings\Connections", true);
             var defConnection = (byte[])registry.GetValue("DefaultConnectionSettings");
             var savedLegacySetting = (byte[])registry.GetValue("SavedLegacySettings");
 
@@ -147,12 +152,8 @@ namespace Shadowsocks.Controller
                 savedLegacySetting[optionsOffset] = (byte)(savedLegacySetting[optionsOffset] & ~8);
             }
 
-            BitConverter.GetBytes(
-                unchecked(BitConverter.ToUInt32(defConnection, versionOffset) + 1))
-                .CopyTo(defConnection, versionOffset);
-            BitConverter.GetBytes(
-                unchecked(BitConverter.ToUInt32(savedLegacySetting, versionOffset) + 1))
-                .CopyTo(savedLegacySetting, versionOffset);
+            BitConverter.GetBytes(unchecked(BitConverter.ToUInt32(defConnection, versionOffset) + 1)).CopyTo(defConnection, versionOffset);
+            BitConverter.GetBytes(unchecked(BitConverter.ToUInt32(savedLegacySetting, versionOffset) + 1)).CopyTo(savedLegacySetting, versionOffset);
 
             registry.SetValue("DefaultConnectionSettings", defConnection);
             registry.SetValue("SavedLegacySettings", savedLegacySetting);

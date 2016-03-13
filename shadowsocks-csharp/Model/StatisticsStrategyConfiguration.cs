@@ -57,7 +57,7 @@ namespace Shadowsocks.Model
             }
         }
 
-        public Dictionary<string, float> Calculations;
+        public Dictionary<string, float> Calculations { get; private set; }
 
         public StatisticsStrategyConfiguration()
         {

@@ -22,15 +22,13 @@ namespace Shadowsocks.Model
         public int? MinInboundSpeed;
         public int? MaxInboundSpeed;
 
-        private bool EmptyInboundSpeedData
-            => (AverageInboundSpeed == null) && (MinInboundSpeed == null) && (MaxInboundSpeed == null);
+        private bool EmptyInboundSpeedData => (AverageInboundSpeed == null) && (MinInboundSpeed == null) && (MaxInboundSpeed == null);
 
         public int? AverageOutboundSpeed;
         public int? MinOutboundSpeed;
         public int? MaxOutboundSpeed;
 
-        private bool EmptyOutboundSpeedData
-            => (AverageOutboundSpeed == null) && (MinOutboundSpeed == null) && (MaxOutboundSpeed == null);
+        private bool EmptyOutboundSpeedData => (AverageOutboundSpeed == null) && (MinOutboundSpeed == null) && (MaxOutboundSpeed == null);
 
         // if user disabled ping test, response would be null
         public int? AverageResponse;
@@ -38,10 +36,10 @@ namespace Shadowsocks.Model
         public int? MaxResponse;
         public float? PackageLoss;
 
-        private bool EmptyResponseData
-            => (AverageResponse == null) && (MinResponse == null) && (MaxResponse == null) && (PackageLoss == null);
+        private bool EmptyResponseData => (AverageResponse == null) && (MinResponse == null) && (MaxResponse == null) && (PackageLoss == null);
 
-        public bool IsEmptyData() {
+        public bool IsEmptyData()
+        {
             return EmptyInboundSpeedData && EmptyOutboundSpeedData && EmptyResponseData && EmptyLatencyData;
         }
 
@@ -53,23 +51,26 @@ namespace Shadowsocks.Model
         {
             ServerIdentifier = identifier;
             var inbound = inboundSpeedRecords?.Where(s => s > 0).ToList();
+
             if (inbound != null && inbound.Any())
             {
-                AverageInboundSpeed = (int) inbound.Average();
+                AverageInboundSpeed = (int)inbound.Average();
                 MinInboundSpeed = inbound.Min();
                 MaxInboundSpeed = inbound.Max();
             }
+
             var outbound = outboundSpeedRecords?.Where(s => s > 0).ToList();
-            if (outbound!= null && outbound.Any())
+            if (outbound != null && outbound.Any())
             {
-                AverageOutboundSpeed = (int) outbound.Average();
+                AverageOutboundSpeed = (int)outbound.Average();
                 MinOutboundSpeed = outbound.Min();
                 MaxOutboundSpeed = outbound.Max();
             }
+
             var latency = latencyRecords?.Where(s => s > 0).ToList();
-            if (latency!= null && latency.Any())
+            if (latency != null && latency.Any())
             {
-                AverageLatency = (int) latency.Average();
+                AverageLatency = (int)latency.Average();
                 MinLatency = latency.Min();
                 MaxLatency = latency.Max();
             }
@@ -86,10 +87,10 @@ namespace Shadowsocks.Model
             if (responseRecords == null) return;
             var records = responseRecords.Where(response => response != null).Select(response => response.Value).ToList();
             if (!records.Any()) return;
-            AverageResponse = (int?) records.Average();
+            AverageResponse = (int?)records.Average();
             MinResponse = records.Min();
             MaxResponse = records.Max();
-            PackageLoss = responseRecords.Count(response => response != null)/(float) responseRecords.Count;
+            PackageLoss = responseRecords.Count(response => response != null) / (float)responseRecords.Count;
         }
     }
 }

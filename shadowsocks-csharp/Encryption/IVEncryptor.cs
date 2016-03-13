@@ -7,8 +7,7 @@ using System.Net;
 
 namespace Shadowsocks.Encryption
 {
-    public abstract class IVEncryptor
-        : EncryptorBase
+    public abstract class IVEncryptor : EncryptorBase
     {
         public const int MAX_KEY_LENGTH = 64;
         public const int MAX_IV_LENGTH = 16;

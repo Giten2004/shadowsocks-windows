@@ -127,7 +127,6 @@ namespace Shadowsocks.Util
 
         [DllImport("kernel32.dll")]
         [return: MarshalAs(UnmanagedType.Bool)]
-        private static extern bool SetProcessWorkingSetSize(IntPtr process,
-            UIntPtr minimumWorkingSetSize, UIntPtr maximumWorkingSetSize);
+        private static extern bool SetProcessWorkingSetSize(IntPtr process, UIntPtr minimumWorkingSetSize, UIntPtr maximumWorkingSetSize);
     }
 }
