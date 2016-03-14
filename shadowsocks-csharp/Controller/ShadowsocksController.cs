@@ -384,6 +384,7 @@ namespace Shadowsocks.Controller
                 List<IService> services = new List<IService>();
                 services.Add(tcpRelay);
                 services.Add(udpRelay);
+
                 services.Add(_pacServer);
                 services.Add(new PortForwarder(polipoRunner.RunningPort));
 

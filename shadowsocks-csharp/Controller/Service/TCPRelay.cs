@@ -33,10 +33,13 @@ namespace Shadowsocks.Controller
             {
                 return false;
             }
+
+            //ref: Socks5 protocol 
             if (length < 2 || firstPacket[0] != 5)
             {
                 return false;
             }
+
             socket.SetSocketOption(SocketOptionLevel.Tcp, SocketOptionName.NoDelay, true);
             TCPRelayHandler handler = new TCPRelayHandler(this);
             handler.connection = socket;
@@ -45,6 +48,7 @@ namespace Shadowsocks.Controller
 
             handler.Start(firstPacket, length);
             IList<TCPRelayHandler> handlersToClose = new List<TCPRelayHandler>();
+
             lock (Handlers)
             {
                 Handlers.Add(handler);
@@ -61,11 +65,13 @@ namespace Shadowsocks.Controller
                     }
                 }
             }
+
             foreach (TCPRelayHandler handler1 in handlersToClose)
             {
                 Logging.Debug("Closing timed out TCP connection.");
                 handler1.Close();
             }
+
             return true;
         }
 

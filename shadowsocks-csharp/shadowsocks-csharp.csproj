@@ -173,6 +173,7 @@
     <Compile Include="Controller\Service\AvailabilityStatistics.cs" />
     <Compile Include="Controller\Service\IService.cs" />
     <Compile Include="Controller\Service\LRUCache.cs" />
+    <Compile Include="Controller\Service\PortForwardHandler.cs" />
     <Compile Include="Controller\Service\UDPRelayHandler.cs" />
     <Compile Include="Controller\Service\UDPState.cs" />
     <Compile Include="Controller\Strategy\HighAvailabilityStrategy.cs" />

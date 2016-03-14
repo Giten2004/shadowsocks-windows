@@ -13,8 +13,16 @@ using Shadowsocks.Util;
 
 namespace Shadowsocks.Controller
 {
+    /// <summary>
+    /// this is use for privoxy.exe
+    /// http://www.privoxy.org/
+    /// </summary>
     class PolipoRunner
     {
+        private const string PrivoxyExecuterName = "ss_privoxy.exe";
+        private const string PrivoxyExecuterMGWZDll = "mgwz.dll";
+        private const string PrivoxyExecuterProcessName = "ss_privoxy";
+        private const string PrivoxyConfigurationFile = "privoxy.conf";
         private Process _process;
         private int _runningPort;
 
@@ -22,8 +30,8 @@ namespace Shadowsocks.Controller
         {
             try
             {
-                FileManager.UncompressFile(Utils.GetTempPath("ss_privoxy.exe"), Resources.privoxy_exe);
-                FileManager.UncompressFile(Utils.GetTempPath("mgwz.dll"), Resources.mgwz_dll);
+                FileManager.UncompressFile(Utils.GetTempPath(PrivoxyExecuterName), Resources.privoxy_exe);
+                FileManager.UncompressFile(Utils.GetTempPath(PrivoxyExecuterMGWZDll), Resources.mgwz_dll);
             }
             catch (IOException e)
             {
@@ -41,44 +49,31 @@ namespace Shadowsocks.Controller
 
         public void Start(Configuration configuration)
         {
-            Server server = configuration.GetCurrentServer();
+            //Server server = configuration.GetCurrentServer();
             if (_process == null)
             {
-                Process[] existingPolipo = Process.GetProcessesByName("ss_privoxy");
-                foreach (Process p in existingPolipo)
-                {
-                    try
-                    {
-                        p.CloseMainWindow();
-                        p.WaitForExit(100);
-                        if (!p.HasExited)
-                        {
-                            p.Kill();
-                            p.WaitForExit();
-                        }
-                    }
-                    catch (Exception e)
-                    {
-                        Logging.LogUsefulException(e);
-                    }
-                }
-                string polipoConfig = Resources.privoxy_conf;
+                KillProcess(PrivoxyExecuterProcessName);
+
                 _runningPort = this.GetFreePort();
+
+                string polipoConfig = Resources.privoxy_conf;
                 polipoConfig = polipoConfig.Replace("__SOCKS_PORT__", configuration.localPort.ToString());
                 polipoConfig = polipoConfig.Replace("__POLIPO_BIND_PORT__", _runningPort.ToString());
                 polipoConfig = polipoConfig.Replace("__POLIPO_BIND_IP__", configuration.shareOverLan ? "0.0.0.0" : "127.0.0.1");
-                FileManager.ByteArrayToFile(Utils.GetTempPath("privoxy.conf"), Encoding.UTF8.GetBytes(polipoConfig));
+
+                FileManager.ByteArrayToFile(Utils.GetTempPath(PrivoxyConfigurationFile), Encoding.UTF8.GetBytes(polipoConfig));
 
                 _process = new Process();
                 // Configure the process using the StartInfo properties.
-                _process.StartInfo.FileName = "ss_privoxy.exe";
-                _process.StartInfo.Arguments = "privoxy.conf";
+                _process.StartInfo.FileName = PrivoxyExecuterName;
+                _process.StartInfo.Arguments = PrivoxyConfigurationFile;
                 _process.StartInfo.WorkingDirectory = Utils.GetTempPath();
                 _process.StartInfo.WindowStyle = ProcessWindowStyle.Hidden;
                 _process.StartInfo.UseShellExecute = true;
                 _process.StartInfo.CreateNoWindow = true;
                 _process.Start();
             }
+
             RefreshTrayArea();
         }
 
@@ -100,19 +95,43 @@ namespace Shadowsocks.Controller
             RefreshTrayArea();
         }
 
+        private void KillProcess(string processName)
+        {
+            Process[] existingPolipo = Process.GetProcessesByName(processName);
+
+            foreach (Process p in existingPolipo)
+            {
+                try
+                {
+                    p.CloseMainWindow();
+                    p.WaitForExit(100);
+
+                    if (!p.HasExited)
+                    {
+                        p.Kill();
+                        p.WaitForExit();
+                    }
+                }
+                catch (Exception e)
+                {
+                    Logging.LogUsefulException(e);
+                }
+            }
+        }
+
         private int GetFreePort()
         {
             int defaultPort = 8123;
             try
             {
-                IPGlobalProperties properties = IPGlobalProperties.GetIPGlobalProperties();
-                IPEndPoint[] tcpEndPoints = properties.GetActiveTcpListeners();
+                IPEndPoint[] tcpEndPoints = IPGlobalProperties.GetIPGlobalProperties().GetActiveTcpListeners();
 
                 List<int> usedPorts = new List<int>();
-                foreach (IPEndPoint endPoint in IPGlobalProperties.GetIPGlobalProperties().GetActiveTcpListeners())
+                foreach (IPEndPoint endPoint in tcpEndPoints)
                 {
                     usedPorts.Add(endPoint.Port);
                 }
+
                 for (int port = defaultPort; port <= 65535; port++)
                 {
                     if (!usedPorts.Contains(port))
@@ -169,8 +188,11 @@ namespace Shadowsocks.Controller
             RECT rect;
             GetClientRect(windowHandle, out rect);
             for (var x = 0; x < rect.right; x += 5)
+            {
                 for (var y = 0; y < rect.bottom; y += 5)
+                {
                     SendMessage(windowHandle, wmMousemove, 0, (y << 16) + x);
+                }}
         }
     }
 }

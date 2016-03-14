@@ -16,9 +16,10 @@ namespace Shadowsocks.Util
         // return path to store temporary files
         public static string GetTempPath()
         {
-            if (TempPath == null)
+            if (string.IsNullOrEmpty(TempPath))
             {
                 if (File.Exists(Path.Combine(Application.StartupPath, "shadowsocks_portable_mode.txt")))
+                {
                     try
                     {
                         Directory.CreateDirectory(Path.Combine(Application.StartupPath, "temp"));
@@ -33,8 +34,11 @@ namespace Shadowsocks.Util
                         // don't use "/", it will fail when we call explorer /select xxx/temp\xxx.log
                         TempPath = Path.Combine(Application.StartupPath, "temp");
                     }
+                }
                 else
+                {
                     TempPath = Path.GetTempPath();
+                }
             }
             return TempPath;
         }
@@ -55,6 +59,7 @@ namespace Shadowsocks.Util
             // which is part of user experience
             GC.Collect(GC.MaxGeneration);
             GC.WaitForPendingFinalizers();
+
             if (removePages)
             {
                 // as some users have pointed out
@@ -75,8 +80,7 @@ namespace Shadowsocks.Util
                 // we'll do as much as we can to help you
                 //
                 // just kidding
-                SetProcessWorkingSetSize(Process.GetCurrentProcess().Handle,
-                    (UIntPtr)0xFFFFFFFF, (UIntPtr)0xFFFFFFFF);
+                SetProcessWorkingSetSize(Process.GetCurrentProcess().Handle, (UIntPtr)0xFFFFFFFF, (UIntPtr)0xFFFFFFFF);
             }
         }
 
@@ -107,16 +111,19 @@ namespace Shadowsocks.Util
                 f = f / 1024;
                 unit = "KiB";
             }
+
             if (f > 1024)
             {
                 f = f / 1024;
                 unit = "MiB";
             }
+
             if (f > 1024)
             {
                 f = f / 1024;
                 unit = "GiB";
             }
+
             if (f > 1024)
             {
                 f = f / 1024;

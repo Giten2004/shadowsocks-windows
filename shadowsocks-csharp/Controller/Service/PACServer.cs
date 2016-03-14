@@ -69,11 +69,16 @@ namespace Shadowsocks.Controller
             {
                 return false;
             }
+
             try
             {
                 string request = Encoding.UTF8.GetString(firstPacket, 0, length);
                 string[] lines = request.Split('\r', '\n');
-                bool hostMatch = false, pathMatch = false, useSocks = false;
+
+                bool hostMatch = false;
+                bool pathMatch = false;
+                bool useSocks = false;
+
                 foreach (string line in lines)
                 {
                     string[] kv = line.Split(new char[] { ':' }, 2);
@@ -103,11 +108,13 @@ namespace Shadowsocks.Controller
                         }
                     }
                 }
+
                 if (hostMatch && pathMatch)
                 {
                     SendResponse(firstPacket, length, socket, useSocks);
                     return true;
                 }
+
                 return false;
             }
             catch (ArgumentException)
