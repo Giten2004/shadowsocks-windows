@@ -156,8 +156,10 @@ Content-Length: {0}
 Connection: Close
 
 ", Encoding.UTF8.GetBytes(pac).Length) + pac;
+
                 byte[] response = Encoding.UTF8.GetBytes(text);
                 socket.BeginSend(response, 0, response.Length, 0, new AsyncCallback(SendCallback), socket);
+
                 Utils.ReleaseMemory(true);
             }
             catch (Exception e)
@@ -255,19 +257,6 @@ Connection: Close
 
         private string GetPACAddress(byte[] requestBuf, int length, IPEndPoint localEndPoint, bool useSocks)
         {
-            //try
-            //{
-            //    string requestString = Encoding.UTF8.GetString(requestBuf);
-            //    if (requestString.IndexOf("AppleWebKit") >= 0)
-            //    {
-            //        string address = "" + localEndPoint.Address + ":" + config.GetCurrentServer().local_port;
-            //        proxy = "SOCKS5 " + address + "; SOCKS " + address + ";";
-            //    }
-            //}
-            //catch (Exception e)
-            //{
-            //    Logging.LogUsefulException(e);
-            //}
             return (useSocks ? "SOCKS5 " : "PROXY ") + localEndPoint.Address + ":" + this._config.localPort + ";";
         }
     }

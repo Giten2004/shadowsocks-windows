@@ -402,6 +402,7 @@ namespace Shadowsocks.View
         {
             controller.Stop();
             _notifyIcon.Visible = false;
+
             Application.Exit();
         }
 

@@ -23,6 +23,7 @@ namespace Shadowsocks.Controller
         private const string PrivoxyExecuterMGWZDll = "mgwz.dll";
         private const string PrivoxyExecuterProcessName = "ss_privoxy";
         private const string PrivoxyConfigurationFile = "privoxy.conf";
+
         private Process _process;
         private int _runningPort;
 
@@ -92,6 +93,7 @@ namespace Shadowsocks.Controller
                 }
                 _process = null;
             }
+
             RefreshTrayArea();
         }
 
@@ -187,6 +189,7 @@ namespace Shadowsocks.Controller
             const uint wmMousemove = 0x0200;
             RECT rect;
             GetClientRect(windowHandle, out rect);
+
             for (var x = 0; x < rect.right; x += 5)
             {
                 for (var y = 0; y < rect.bottom; y += 5)

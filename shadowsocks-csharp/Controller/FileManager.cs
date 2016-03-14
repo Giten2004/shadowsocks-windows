@@ -11,13 +11,14 @@ namespace Shadowsocks.Controller
             try
             {
                 using (var fs = new FileStream(fileName, FileMode.Create, FileAccess.Write))
+                {
                     fs.Write(content, 0, content.Length);
+                }
                 return true;
             }
             catch (Exception ex)
             {
-                Console.WriteLine("Exception caught in process: {0}",
-                                  ex.ToString());
+                Console.WriteLine("Exception caught in process: {0}", ex.ToString());
             }
             return false;
         }
@@ -29,14 +30,14 @@ namespace Shadowsocks.Controller
             byte[] buffer = new byte[4096];
             int n;
 
-            using(var fs = File.Create(fileName))
-            using (var input = new GZipStream(
-                new MemoryStream(content),
-                CompressionMode.Decompress, false))
+            using (var fs = File.Create(fileName))
             {
-                while ((n = input.Read(buffer, 0, buffer.Length)) > 0)
+                using (var input = new GZipStream(new MemoryStream(content), CompressionMode.Decompress, false))
                 {
-                    fs.Write(buffer, 0, n);
+                    while ((n = input.Read(buffer, 0, buffer.Length)) > 0)
+                    {
+                        fs.Write(buffer, 0, n);
+                    }
                 }
             }
         }

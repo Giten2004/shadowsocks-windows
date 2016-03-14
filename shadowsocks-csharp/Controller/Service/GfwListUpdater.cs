@@ -22,6 +22,10 @@ namespace Shadowsocks.Controller
         }
     }
 
+    /// <summary>
+    /// https://github.com/gfwlist/gfwlist
+    /// 
+    /// </summary>
     public class GFWListUpdater
     {
         private static readonly IEnumerable<char> IgnoredLineBegins = new[] { '!', '[' };
@@ -36,6 +40,7 @@ namespace Shadowsocks.Controller
             {
                 File.WriteAllText(Utils.GetTempPath("gfwlist.txt"), e.Result, Encoding.UTF8);
                 List<string> lines = ParseResult(e.Result);
+
                 if (File.Exists(PACServer.USER_RULE_FILE))
                 {
                     string local = File.ReadAllText(PACServer.USER_RULE_FILE, Encoding.UTF8);
@@ -49,6 +54,7 @@ namespace Shadowsocks.Controller
                         }
                     }
                 }
+
                 string abpContent;
                 if (File.Exists(PACServer.USER_ABP_FILE))
                 {
@@ -59,6 +65,7 @@ namespace Shadowsocks.Controller
                     abpContent = Utils.UnGzip(Resources.abp_js);
                 }
                 abpContent = abpContent.Replace("__RULES__", JsonConvert.SerializeObject(lines, Formatting.Indented));
+
                 if (File.Exists(PACServer.PAC_FILE))
                 {
                     string original = File.ReadAllText(PACServer.PAC_FILE, Encoding.UTF8);
@@ -68,6 +75,7 @@ namespace Shadowsocks.Controller
                         return;
                     }
                 }
+
                 File.WriteAllText(PACServer.PAC_FILE, abpContent, Encoding.UTF8);
                 if (UpdateCompleted != null)
                 {
@@ -91,9 +99,14 @@ namespace Shadowsocks.Controller
             http.DownloadStringAsync(new Uri(GFWLIST_URL));
         }
 
-        public static List<string> ParseResult(string response)
+        public static List<string> ParseBase64String(string base64String)
         {
-            byte[] bytes = Convert.FromBase64String(response);
+            return ParseResult(base64String);
+        }
+
+        private static List<string> ParseResult(string base64String)
+        {
+            byte[] bytes = Convert.FromBase64String(base64String);
             string content = Encoding.ASCII.GetString(bytes);
             List<string> valid_lines = new List<string>();
             using (var sr = new StringReader(content))

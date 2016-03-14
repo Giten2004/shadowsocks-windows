@@ -207,15 +207,18 @@ namespace Shadowsocks.Controller
             {
                 return;
             }
+
             stopped = true;
             if (_listener != null)
             {
                 _listener.Stop();
             }
+
             if (polipoRunner != null)
             {
                 polipoRunner.Stop();
             }
+
             if (_config.enabled)
             {
                 SystemProxy.Update(_config, true);
@@ -467,7 +470,7 @@ namespace Shadowsocks.Controller
                 UpdatePACFromGFWList();
                 return;
             }
-            List<string> lines = GFWListUpdater.ParseResult(File.ReadAllText(Utils.GetTempPath("gfwlist.txt")));
+            List<string> lines = GFWListUpdater.ParseBase64String(File.ReadAllText(Utils.GetTempPath("gfwlist.txt")));
             if (File.Exists(PACServer.USER_RULE_FILE))
             {
                 string local = File.ReadAllText(PACServer.USER_RULE_FILE, Encoding.UTF8);

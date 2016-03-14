@@ -72,7 +72,7 @@ namespace Shadowsocks.Controller
                 _tcpSocket.BeginAccept(new AsyncCallback(TCPAcceptCallback), _tcpSocket);
 
                 UDPState udpState = new UDPState();
-                _udpSocket.BeginReceiveFrom(udpState.Buffer, 0, udpState.Buffer.Length, 0, ref udpState.RemoteEndPoint, new AsyncCallback(UDPRecvFromCallback), udpState);
+                _udpSocket.BeginReceiveFrom(udpState.Buffer, 0, udpState.Buffer.Length, SocketFlags.None, ref udpState.RemoteEndPoint, new AsyncCallback(UDPRecvFromCallback), udpState);
             }
             catch (SocketException)
             {

@@ -22,8 +22,8 @@
 ####################################################################
 
 listen-address __POLIPO_BIND_IP__:__POLIPO_BIND_PORT__
-show-on-task-bar 1
-activity-animation 1
+show-on-task-bar 0
+activity-animation 0
 # forward-socks5代表将Http转发到socks5代理，/代表所有的URL都转发(也可以在这里写url patten)，127.0.0.1:7979是socks代理的位置，最后的一点.代表没有http代理，具体请上官网查阅。
 forward-socks5 / 127.0.0.1:__SOCKS_PORT__ .
-#hide-console
+hide-console
