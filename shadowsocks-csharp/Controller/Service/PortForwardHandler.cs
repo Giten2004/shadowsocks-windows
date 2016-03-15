@@ -1,9 +1,15 @@
 ﻿using System;
 using System.Net;
 using System.Net.Sockets;
+using System.Text;
 
 namespace Shadowsocks.Controller
 {
+    /// <summary>
+    /// Forward http proxy on local running port 
+    /// to
+    /// Privoxy's http proxy port
+    /// </summary>
     class PortForwardHandler
     {
         public const int RecvSize = 16384;
@@ -28,6 +34,7 @@ namespace Shadowsocks.Controller
 
             try
             {
+                var tt = Encoding.UTF8.GetString(firstPacket, 0, length);
                 // TODO async resolving
                 IPAddress ipAddress;
                 bool parsed = IPAddress.TryParse("127.0.0.1", out ipAddress);

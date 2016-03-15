@@ -41,12 +41,12 @@ namespace Shadowsocks.Controller
             }
 
             socket.SetSocketOption(SocketOptionLevel.Tcp, SocketOptionName.NoDelay, true);
-            TCPRelayHandler handler = new TCPRelayHandler(this);
-            handler.connection = socket;
-            handler.controller = _controller;
-            handler.relay = this;
-
+            TCPRelayHandler handler = new TCPRelayHandler(this, socket, _controller);
+            //handler.connection = socket;
+            //handler.controller = _controller;
+            //handler.relay = this;
             handler.Start(firstPacket, length);
+
             IList<TCPRelayHandler> handlersToClose = new List<TCPRelayHandler>();
 
             lock (Handlers)
@@ -58,7 +58,7 @@ namespace Shadowsocks.Controller
                     _lastSweepTime = now;
                     foreach (TCPRelayHandler handler1 in Handlers)
                     {
-                        if (now - handler1.lastActivity > TimeSpan.FromSeconds(900))
+                        if (now - handler1.LastActivity > TimeSpan.FromSeconds(900))
                         {
                             handlersToClose.Add(handler1);
                         }

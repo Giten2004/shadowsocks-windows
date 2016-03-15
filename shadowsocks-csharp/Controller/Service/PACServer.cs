@@ -257,6 +257,8 @@ Connection: Close
 
         private string GetPACAddress(byte[] requestBuf, int length, IPEndPoint localEndPoint, bool useSocks)
         {
+            //"PROXY host:port 使用 HTTP 代理
+            //"SOCKS5 host:port" 使用 SOCKS5 代理
             return (useSocks ? "SOCKS5 " : "PROXY ") + localEndPoint.Address + ":" + this._config.localPort + ";";
         }
     }
