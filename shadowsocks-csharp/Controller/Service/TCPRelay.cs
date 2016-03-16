@@ -35,6 +35,12 @@ namespace Shadowsocks.Controller
             }
 
             //ref: Socks5 protocol 
+            //The client connects to the server, and sends a version identifier / method selection message:
+            //+-----+----------+----------+
+            //| VER | NMETHODS | METHODS  |
+            //+-----+----------+----------+
+            //|  1  | 1        | 1 to 255 |
+            //+-----+----------+----------+
             if (length < 2 || firstPacket[0] != 5)
             {
                 return false;
@@ -42,9 +48,6 @@ namespace Shadowsocks.Controller
 
             socket.SetSocketOption(SocketOptionLevel.Tcp, SocketOptionName.NoDelay, true);
             TCPRelayHandler handler = new TCPRelayHandler(this, socket, _controller);
-            //handler.connection = socket;
-            //handler.controller = _controller;
-            //handler.relay = this;
             handler.Start(firstPacket, length);
 
             IList<TCPRelayHandler> handlersToClose = new List<TCPRelayHandler>();
@@ -75,20 +78,20 @@ namespace Shadowsocks.Controller
             return true;
         }
 
-        public void UpdateInboundCounter(Server server, long n)
-        {
-            _controller.UpdateInboundCounter(server, n);
-        }
+        //public void UpdateInboundCounter(Server server, long n)
+        //{
+        //    _controller.UpdateInboundCounter(server, n);
+        //}
 
-        public void UpdateOutboundCounter(Server server, long n)
-        {
-            _controller.UpdateOutboundCounter(server, n);
-        }
+        //public void UpdateOutboundCounter(Server server, long n)
+        //{
+        //    _controller.UpdateOutboundCounter(server, n);
+        //}
 
-        public void UpdateLatency(Server server, TimeSpan latency)
-        {
-            _controller.UpdateLatency(server, latency);
-        }
+        //public void UpdateLatency(Server server, TimeSpan latency)
+        //{
+        //    _controller.UpdateLatency(server, latency);
+        //}
     }
 
    

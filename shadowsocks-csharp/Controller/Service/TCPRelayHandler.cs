@@ -7,6 +7,7 @@ using System.Timers;
 using Shadowsocks.Controller.Strategy;
 using Shadowsocks.Encryption;
 using Shadowsocks.Model;
+using System.Text;
 
 namespace Shadowsocks.Controller
 {
@@ -31,9 +32,9 @@ namespace Shadowsocks.Controller
         private IEncryptor _encryptor;
         private Server _server;
         // Client  socket.
-        private Socket _remote;
+        private Socket _ssServerSocket;
         private Socket _connection;
-        private ShadowsocksController _ssController;             
+        private ShadowsocksController _ssController;
 
         private int _retryCount = 0;
         private bool _connected;
@@ -43,12 +44,12 @@ namespace Shadowsocks.Controller
         private int _firstPacketLength;
 
         private int _totalRead = 0;
-        private int _totalWrite = 0;       
+        private int _totalWrite = 0;
 
-        private byte[] _remoteRecvBuffer = new byte[BufferSize];
-        private byte[] _remoteSendBuffer = new byte[BufferSize];
+        private byte[] _ssServerRecvBuffer = new byte[BufferSize];
+        private byte[] _ssServerSend2UserBuffer = new byte[BufferSize];
         private byte[] _connetionRecvBuffer = new byte[BufferSize];
-        private byte[] _connetionSendBuffer = new byte[BufferSize];
+        private byte[] _connetionSend2SSServerBuffer = new byte[BufferSize];
 
         private bool _connectionShutdown = false;
         private bool _remoteShutdown = false;
@@ -119,12 +120,12 @@ namespace Shadowsocks.Controller
                 }
             }
 
-            if (_remote != null)
+            if (_ssServerSocket != null)
             {
                 try
                 {
-                    _remote.Shutdown(SocketShutdown.Both);
-                    _remote.Close();
+                    _ssServerSocket.Shutdown(SocketShutdown.Both);
+                    _ssServerSocket.Close();
                 }
                 catch (Exception e)
                 {
@@ -157,6 +158,12 @@ namespace Shadowsocks.Controller
 
                 if (bytesRead > 1)
                 {
+                    //+-----+--------+
+                    //| VER | METHOD |
+                    //+-----+--------+
+                    //| 1   | 1      |
+                    //+-----+--------+
+                    // X'00' NO AUTHENTICATION REQUIRED
                     byte[] response = { 5, 0 };
                     if (_firstPacket[0] != 5)
                     {
@@ -195,8 +202,10 @@ namespace Shadowsocks.Controller
                 // +-----+-----+-------+------+----------+----------+
                 // |  1  |  1  | X'00' |  1   | Variable |    2     |
                 // +-----+-----+-------+------+----------+----------+
-                // Skip first 3 bytes
+
                 // TODO validate
+                //receive the request details of the client sent
+                // only read first 3 bytes
                 _connection.BeginReceive(_connetionRecvBuffer, 0, 3, SocketFlags.None, new AsyncCallback(handshakeReceive2Callback), null);
             }
             catch (Exception e)
@@ -215,13 +224,49 @@ namespace Shadowsocks.Controller
 
             try
             {
+                // +-----+-----+-------+------+----------+----------+
+                // | VER | CMD |  RSV  | ATYP | DST.ADDR | DST.PORT |
+                // +-----+-----+-------+------+----------+----------+
+                // |  1  |  1  | X'00' |  1   | Variable |    2     |
+                // +-----+-----+-------+------+----------+----------+
+                // only read the first 3 bytes, why?
                 int bytesRead = _connection.EndReceive(ar);
 
+                //o VER    protocol version: X'05'
+                //o CMD
+                //   o CONNECT X'01'
+                //   o BIND X'02'
+                //   o UDP ASSOCIATE X'03'
+                //o RSV    RESERVED
                 if (bytesRead >= 3)
                 {
                     _command = _connetionRecvBuffer[1];
                     if (_command == 1)
                     {
+                        //+-----+-----+-------+------+----------+----------+
+                        //| VER | REP | RSV   | ATYP | BND.ADDR | BND.PORT |
+                        //+-----+-----+-------+------+----------+----------+
+                        //| 1   | 1   | X'00' | 1    | Variable | 2        |
+                        //+-----+-----+-------+------+----------+----------+
+                        // o VER    protocol version: X'05'
+                        // o REP    Reply field:
+                        //    o X'00' succeeded
+                        //    o X'01' general SOCKS server failure
+                        //    o X'02' connection not allowed by ruleset
+                        //    o X'03' Network unreachable
+                        //    o X'04' Host unreachable
+                        //    o X'05' Connection refused
+                        //    o X'06' TTL expired
+                        //    o X'07' Command not supported
+                        //    o X'08' Address type not supported
+                        //    o X'09' to X'FF' unassigned
+                        // o  RSV RESERVED
+                        // o ATYP   address type of following address
+                        //    o IP V4 address: X'01'
+                        //    o DOMAINNAME: X'03'
+                        //    o IP V6 address: X'04'
+                        // o BND.ADDR server bound address
+                        // o BND.PORT server bound port in network octet order
                         byte[] response = { 5, 0, 0, 1, 0, 0, 0, 0, 0, 0 };
                         _connection.BeginSend(response, 0, response.Length, SocketFlags.None, new AsyncCallback(ResponseCallback), null);
                     }
@@ -276,7 +321,7 @@ namespace Shadowsocks.Controller
                 if (ar.AsyncState != null)
                 {
                     _connection.EndSend(ar);
-                    Logging.Debug(_remote, RecvSize, "TCP Relay");
+                    Logging.Debug(_ssServerSocket, RecvSize, "TCP Relay");
                     _connection.BeginReceive(_connetionRecvBuffer, 0, RecvSize, SocketFlags.None, new AsyncCallback(ReadAll), null);
                 }
                 else
@@ -284,7 +329,7 @@ namespace Shadowsocks.Controller
                     int bytesRead = _connection.EndReceive(ar);
                     if (bytesRead > 0)
                     {
-                        Logging.Debug(_remote, RecvSize, "TCP Relay");
+                        Logging.Debug(_ssServerSocket, RecvSize, "TCP Relay");
                         _connection.BeginReceive(_connetionRecvBuffer, 0, RecvSize, SocketFlags.None, new AsyncCallback(ReadAll), null);
                     }
                     else
@@ -316,22 +361,22 @@ namespace Shadowsocks.Controller
             }
         }
 
-        private void CreateRemote()
+        private void ChooseServer()
         {
             Server server = _ssController.GetAServer(IStrategyCallerType.TCP, (IPEndPoint)_connection.RemoteEndPoint);
             if (server == null || server.server == "")
             {
                 throw new ArgumentException("No server configured");
             }
-            _encryptor = EncryptorFactory.GetEncryptor(server.method, server.password, server.auth, false);
             this._server = server;
+            _encryptor = EncryptorFactory.GetEncryptor(server.method, server.password, server.auth, false);
         }
 
         private void StartConnect()
         {
             try
             {
-                CreateRemote();
+                ChooseServer();
 
                 // TODO async resolving
                 IPAddress ipAddress;
@@ -341,10 +386,10 @@ namespace Shadowsocks.Controller
                     IPHostEntry ipHostInfo = Dns.GetHostEntry(_server.server);
                     ipAddress = ipHostInfo.AddressList[0];
                 }
-                IPEndPoint remoteEP = new IPEndPoint(ipAddress, _server.server_port);
+                IPEndPoint ssServerEndPoint = new IPEndPoint(ipAddress, _server.server_port);
 
-                _remote = new Socket(ipAddress.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
-                _remote.SetSocketOption(SocketOptionLevel.Tcp, SocketOptionName.NoDelay, true);
+                _ssServerSocket = new Socket(ipAddress.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
+                _ssServerSocket.SetSocketOption(SocketOptionLevel.Tcp, SocketOptionName.NoDelay, true);
 
                 _startConnectTime = DateTime.Now;
                 ServerTimer connectTimer = new ServerTimer(3000, _server);
@@ -354,7 +399,7 @@ namespace Shadowsocks.Controller
 
                 _connected = false;
                 // Connect to the remote endpoint.
-                _remote.BeginConnect(remoteEP, new AsyncCallback(ConnectCallback), connectTimer);
+                _ssServerSocket.BeginConnect(ssServerEndPoint, new AsyncCallback(SSServerConnectCallback), connectTimer);
             }
             catch (Exception e)
             {
@@ -379,7 +424,7 @@ namespace Shadowsocks.Controller
 
             Logging.Info($"{server.FriendlyName()} timed out");
 
-            _remote.Close();
+            _ssServerSocket.Close();
 
             RetryConnect();
         }
@@ -398,13 +443,14 @@ namespace Shadowsocks.Controller
             }
         }
 
-        private void ConnectCallback(IAsyncResult ar)
+        private void SSServerConnectCallback(IAsyncResult ar)
         {
-            Server server = null;
             if (_closed)
             {
                 return;
             }
+
+            Server server = null;
 
             try
             {
@@ -416,16 +462,19 @@ namespace Shadowsocks.Controller
                 server = timer.Server;
 
                 // Complete the connection.
-                _remote.EndConnect(ar);
+                _ssServerSocket.EndConnect(ar);
 
                 _connected = true;
 
-                Logging.Debug($"Socket connected to {_remote.RemoteEndPoint}");
+                Logging.Debug($"Socket connected to {_ssServerSocket.RemoteEndPoint}");
 
                 var latency = DateTime.Now - _startConnectTime;
+
                 IStrategy strategy = _ssController.GetCurrentStrategy();
                 strategy?.UpdateLatency(server, latency);
-                _tcprelay.UpdateLatency(server, latency);
+
+                //_tcprelay.UpdateLatency(server, latency);
+                _ssController.UpdateLatency(server, latency);
 
                 StartPipe();
             }
@@ -457,7 +506,7 @@ namespace Shadowsocks.Controller
             try
             {
                 _startReceivingTime = DateTime.Now;
-                _remote.BeginReceive(_remoteRecvBuffer, 0, RecvSize, SocketFlags.None, new AsyncCallback(PipeRemoteReceiveCallback), null);
+                _ssServerSocket.BeginReceive(_ssServerRecvBuffer, 0, RecvSize, SocketFlags.None, new AsyncCallback(PipeRemoteReceiveCallback), null);
                 _connection.BeginReceive(_connetionRecvBuffer, 0, RecvSize, SocketFlags.None, new AsyncCallback(PipeConnectionReceiveCallback), null);
             }
             catch (Exception e)
@@ -476,9 +525,9 @@ namespace Shadowsocks.Controller
 
             try
             {
-                int bytesRead = _remote.EndReceive(ar);
+                int bytesRead = _ssServerSocket.EndReceive(ar);
                 _totalRead += bytesRead;
-                _tcprelay.UpdateInboundCounter(_server, bytesRead);
+                _ssController.UpdateInboundCounter(_server, bytesRead);
 
                 if (bytesRead > 0)
                 {
@@ -491,12 +540,17 @@ namespace Shadowsocks.Controller
                         {
                             return;
                         }
-                        _encryptor.Decrypt(_remoteRecvBuffer, bytesRead, _remoteSendBuffer, out bytesToSend);
+                        _encryptor.Decrypt(_ssServerRecvBuffer, bytesRead, _ssServerSend2UserBuffer, out bytesToSend);
                     }
 
-                    Logging.Debug(_remote, bytesToSend, "TCP Relay", "@PipeRemoteReceiveCallback() (download)");
-                    _connection.BeginSend(_remoteSendBuffer, 0, bytesToSend, SocketFlags.None, new AsyncCallback(PipeConnectionSendCallback), null);
+                    Logging.Debug(_ssServerSocket, bytesToSend, "TCP Relay", "@PipeRemoteReceiveCallback() (download)");
 
+                    _connection.BeginSend(_ssServerSend2UserBuffer, 0, bytesToSend, SocketFlags.None, new AsyncCallback(PipeConnectionSendCallback), null);
+
+                    //[[ test
+                    //string request = Encoding.UTF8.GetString(_ssServerSend2UserBuffer, 0, bytesToSend);
+                    //Logging.Debug("From SS:" + request);
+                    //]]
                     IStrategy strategy = _ssController.GetCurrentStrategy();
                     if (strategy != null)
                     {
@@ -545,21 +599,28 @@ namespace Shadowsocks.Controller
                         {
                             return;
                         }
-                        _encryptor.Encrypt(_connetionRecvBuffer, bytesRead, _connetionSendBuffer, out bytesToSend);
+                        //[[ test
+                        //string request = Encoding.UTF8.GetString(_connetionRecvBuffer, 0, bytesRead);
+                        //Logging.Debug("From User:" + request);
+                        //]]
+
+                        _encryptor.Encrypt(_connetionRecvBuffer, bytesRead, _connetionSend2SSServerBuffer, out bytesToSend);
                     }
 
-                    Logging.Debug(_remote, bytesToSend, "TCP Relay", "@PipeConnectionReceiveCallback() (upload)");
-                    _tcprelay.UpdateOutboundCounter(_server, bytesToSend);
+                    Logging.Debug(_ssServerSocket, bytesToSend, "TCP Relay", "@PipeConnectionReceiveCallback() (upload)");
+                    //_tcprelay.UpdateOutboundCounter(_server, bytesToSend);
+                    _ssController.UpdateOutboundCounter(_server, bytesToSend);
+
                     _startSendingTime = DateTime.Now;
                     _bytesToSend = bytesToSend;
-                    _remote.BeginSend(_connetionSendBuffer, 0, bytesToSend, SocketFlags.None, new AsyncCallback(PipeRemoteSendCallback), null);
+                    _ssServerSocket.BeginSend(_connetionSend2SSServerBuffer, 0, bytesToSend, SocketFlags.None, new AsyncCallback(PipeRemoteSendCallback), null);
 
                     IStrategy strategy = _ssController.GetCurrentStrategy();
                     strategy?.UpdateLastWrite(_server);
                 }
                 else
                 {
-                    _remote.Shutdown(SocketShutdown.Send);
+                    _ssServerSocket.Shutdown(SocketShutdown.Send);
                     _remoteShutdown = true;
                     CheckClose();
                 }
@@ -580,7 +641,7 @@ namespace Shadowsocks.Controller
 
             try
             {
-                _remote.EndSend(ar);
+                _ssServerSocket.EndSend(ar);
                 _connection.BeginReceive(_connetionRecvBuffer, 0, RecvSize, SocketFlags.None, new AsyncCallback(PipeConnectionReceiveCallback), null);
             }
             catch (Exception e)
@@ -600,7 +661,8 @@ namespace Shadowsocks.Controller
             try
             {
                 _connection.EndSend(ar);
-                _remote.BeginReceive(_remoteRecvBuffer, 0, RecvSize, SocketFlags.None, new AsyncCallback(PipeRemoteReceiveCallback), null);
+
+                _ssServerSocket.BeginReceive(_ssServerRecvBuffer, 0, RecvSize, SocketFlags.None, new AsyncCallback(PipeRemoteReceiveCallback), null);
             }
             catch (Exception e)
             {
