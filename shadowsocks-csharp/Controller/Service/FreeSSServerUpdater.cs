@@ -8,5 +8,7 @@ namespace Shadowsocks.Controller
     public class FreeSSServerUpdater
     {
         private const string IShadowsocks_URL = "http://www.ishadowsocks.net/";
+
+        //todo: use https://fizzlerex.codeplex.com/ to pause html and get the content
     }
 }
