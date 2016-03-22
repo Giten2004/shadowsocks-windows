@@ -183,7 +183,7 @@ namespace Shadowsocks.Controller
         {
             var records = new Dictionary<string, StatisticsRecord>();
 
-            foreach (var server in _controller.GetCurrentConfiguration().configs)
+            foreach (var server in _controller.Configuration.configs)
             {
                 var id = server.Identifier();
                 List<int> inboundSpeedRecords = null;
@@ -202,7 +202,7 @@ namespace Shadowsocks.Controller
 
             if (Config.Ping)
             {
-                var icmpResults = await TaskEx.WhenAll(_controller.GetCurrentConfiguration().configs.Select(ICMPTest));
+                var icmpResults = await TaskEx.WhenAll(_controller.Configuration.configs.Select(ICMPTest));
                 foreach (var result in icmpResults.Where(result => result != null))
                 {
                     records[result.Server.Identifier()].SetResponse(result.RoundtripTime);

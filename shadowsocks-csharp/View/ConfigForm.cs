@@ -1,11 +1,6 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.ComponentModel;
 using System.Drawing;
-using System.Text;
 using System.Windows.Forms;
-using System.Diagnostics;
-using Microsoft.Win32;
 using Shadowsocks.Controller;
 using Shadowsocks.Model;
 using Shadowsocks.Properties;
@@ -14,8 +9,7 @@ namespace Shadowsocks.View
 {
     public partial class ConfigForm : Form
     {
-        private ShadowsocksController controller;
-
+        private ShadowsocksController _controller;
         // this is a copy of configuration that we are working on
         private Configuration _modifiedConfiguration;
         private int _lastSelectedIndex = -1;
@@ -32,7 +26,7 @@ namespace Shadowsocks.View
             UpdateTexts();
             this.Icon = Icon.FromHandle(Resources.ssw128.GetHicon());
 
-            this.controller = controller;
+            this._controller = controller;
             controller.ConfigChanged += controller_ConfigChanged;
 
             LoadCurrentConfiguration();
@@ -132,13 +126,16 @@ namespace Shadowsocks.View
 
         private void LoadCurrentConfiguration()
         {
-            _modifiedConfiguration = controller.GetConfigurationCopy();
+            _modifiedConfiguration = ConfigurationManager.SingleTon.CloneConfiguration();
+
             LoadConfiguration(_modifiedConfiguration);
             _lastSelectedIndex = _modifiedConfiguration.index;
+
             if (_lastSelectedIndex < 0)
             {
                 _lastSelectedIndex = 0;
             }
+
             ServersListBox.SelectedIndex = _lastSelectedIndex;
             UpdateMoveUpAndDownButton();
             LoadSelectedServer();
@@ -155,7 +152,7 @@ namespace Shadowsocks.View
 
             if (e.KeyCode == Keys.Enter)
             {
-                Server server = controller.GetCurrentServer();
+                Server server = _controller.Configuration.GetCurrentServer();
                 if (!SaveOldSelectedServer())
                 {
                     return;
@@ -165,8 +162,8 @@ namespace Shadowsocks.View
                     MessageBox.Show(I18N.GetString("Please add at least one server"));
                     return;
                 }
-                controller.SaveServers(_modifiedConfiguration.configs, _modifiedConfiguration.localPort);
-                controller.SelectServerIndex(_modifiedConfiguration.configs.IndexOf(server));
+                _controller.SaveServers(_modifiedConfiguration.configs, _modifiedConfiguration.localPort);
+                _controller.SelectServerIndex(_modifiedConfiguration.configs.IndexOf(server));
             }
 
         }
@@ -203,7 +200,7 @@ namespace Shadowsocks.View
             {
                 return;
             }
-            Server server = Configuration.GetDefaultServer();
+            Server server = Configuration.CreateNewServer();
             _modifiedConfiguration.configs.Add(server);
             LoadConfiguration(_modifiedConfiguration);
             ServersListBox.SelectedIndex = _modifiedConfiguration.configs.Count - 1;
@@ -230,18 +227,21 @@ namespace Shadowsocks.View
 
         private void OKButton_Click(object sender, EventArgs e)
         {
-            Server server = controller.GetCurrentServer();
+            Server server = _controller.Configuration.GetCurrentServer();
             if (!SaveOldSelectedServer())
             {
                 return;
             }
+
             if (_modifiedConfiguration.configs.Count == 0)
             {
                 MessageBox.Show(I18N.GetString("Please add at least one server"));
                 return;
             }
-            controller.SaveServers(_modifiedConfiguration.configs, _modifiedConfiguration.localPort);
-            controller.SelectServerIndex(_modifiedConfiguration.configs.IndexOf(server));
+
+            _controller.SaveServers(_modifiedConfiguration.configs, _modifiedConfiguration.localPort);
+            _controller.SelectServerIndex(_modifiedConfiguration.configs.IndexOf(server));
+
             this.Close();
         }
 
@@ -257,7 +257,7 @@ namespace Shadowsocks.View
 
         private void ConfigForm_FormClosed(object sender, FormClosedEventArgs e)
         {
-            controller.ConfigChanged -= controller_ConfigChanged;
+            _controller.ConfigChanged -= controller_ConfigChanged;
         }
 
         private void MoveConfigItem(int step)
@@ -320,6 +320,7 @@ namespace Shadowsocks.View
             {
                 return;
             }
+
             if (ServersListBox.SelectedIndex < ServersListBox.Items.Count - 1)
             {
                 MoveConfigItem(+1);  // +1 means move forward

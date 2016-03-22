@@ -25,7 +25,7 @@ namespace Shadowsocks.View
             InitializeComponent();
             Icon = Icon.FromHandle(Resources.ssw128.GetHicon());
 
-            LogViewerConfig config = controller.GetConfigurationCopy().logViewer;
+            LogViewerConfig config = controller.Configuration.logViewer;
             if (config == null)
             {
                 config = new LogViewerConfig();
@@ -122,7 +122,7 @@ namespace Shadowsocks.View
             timer.Tick += Timer_Tick;
             timer.Start();
 
-            LogViewerConfig config = controller.GetConfigurationCopy().logViewer;
+            LogViewerConfig config = controller.Configuration.logViewer;
             if (config == null)
                 config = new LogViewerConfig();
             Height = config.height;
@@ -144,7 +144,7 @@ namespace Shadowsocks.View
         private void LogForm_FormClosing(object sender, FormClosingEventArgs e)
         {
             timer.Stop();
-            LogViewerConfig config = controller.GetConfigurationCopy().logViewer;
+            LogViewerConfig config = controller.Configuration.logViewer;
             if (config == null)
                 config = new LogViewerConfig();
             config.topMost = topMostTrigger;

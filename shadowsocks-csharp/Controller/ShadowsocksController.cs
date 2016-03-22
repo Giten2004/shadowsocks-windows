@@ -35,7 +35,7 @@ namespace Shadowsocks.Controller
 
         private Listener _listener;
         private PACServer _pacServer;
-        private Configuration _config;
+        public Configuration Configuration { get; private set; }
         private StrategyManager _strategyManager;
         private PolipoRunner polipoRunner;
         private GFWListUpdater gfwListUpdater;
@@ -63,7 +63,9 @@ namespace Shadowsocks.Controller
 
         public ShadowsocksController()
         {
-            _config = Configuration.Load();
+            ConfigurationManager.SingleTon.LoadConfig();
+            Configuration = ConfigurationManager.SingleTon.Configuration;
+
             StatisticsConfiguration = StatisticsStrategyConfiguration.Load();
 
             _strategyManager = new StrategyManager(this);
@@ -76,21 +78,11 @@ namespace Shadowsocks.Controller
             Reload();
         }
 
-        public Server GetCurrentServer()
-        {
-            return _config.GetCurrentServer();
-        }
-
         // always return copy
+        //todo: stupid!!!!!! reafactor
         public Configuration GetConfigurationCopy()
         {
-            return Configuration.Load();
-        }
-
-        // always return current instance
-        public Configuration GetCurrentConfiguration()
-        {
-            return _config;
+            return ConfigurationManager.SingleTon.CloneConfiguration();
         }
 
         public IList<IStrategy> GetStrategies()
@@ -102,7 +94,7 @@ namespace Shadowsocks.Controller
         {
             foreach (var strategy in _strategyManager.GetStrategies())
             {
-                if (strategy.ID == this._config.strategy)
+                if (strategy.ID == this.Configuration.strategy)
                 {
                     return strategy;
                 }
@@ -117,18 +109,19 @@ namespace Shadowsocks.Controller
             {
                 return strategy.GetAServer(type, localIPEndPoint);
             }
-            if (_config.index < 0)
+            if (Configuration.index < 0)
             {
-                _config.index = 0;
+                Configuration.index = 0;
             }
-            return GetCurrentServer();
+            return Configuration.GetCurrentServer();
         }
 
         public void SaveServers(List<Server> servers, int localPort)
         {
-            _config.configs = servers;
-            _config.localPort = localPort;
-            Configuration.Save(_config);
+            Configuration.configs = servers;
+            Configuration.localPort = localPort;
+
+            ConfigurationManager.SingleTon.Save(Configuration);
         }
 
         public void SaveStrategyConfigurations(StatisticsStrategyConfiguration configuration)
@@ -142,9 +135,9 @@ namespace Shadowsocks.Controller
             try
             {
                 var server = new Server(ssURL);
-                _config.configs.Add(server);
-                _config.index = _config.configs.Count - 1;
-                SaveConfig(_config);
+                Configuration.configs.Add(server);
+                Configuration.index = Configuration.configs.Count - 1;
+                SaveConfig(Configuration);
                 return true;
             }
             catch (Exception e)
@@ -156,9 +149,9 @@ namespace Shadowsocks.Controller
 
         public void ToggleSystemProxyEnable(bool enabled)
         {
-            _config.enabled = enabled;
+            Configuration.enabled = enabled;
             UpdateSystemProxy();
-            SaveConfig(_config);
+            SaveConfig(Configuration);
 
             if (SystemProxyStatusChanged != null)
             {
@@ -168,9 +161,9 @@ namespace Shadowsocks.Controller
 
         public void ToggleGlobal(bool global)
         {
-            _config.global = global;
+            Configuration.global = global;
             UpdateSystemProxy();
-            SaveConfig(_config);
+            SaveConfig(Configuration);
             if (EnableGlobalChanged != null)
             {
                 EnableGlobalChanged(this, new EventArgs());
@@ -179,8 +172,8 @@ namespace Shadowsocks.Controller
 
         public void ToggleShareOverLAN(bool enabled)
         {
-            _config.shareOverLan = enabled;
-            SaveConfig(_config);
+            Configuration.shareOverLan = enabled;
+            SaveConfig(Configuration);
             if (ShareOverLANStatusChanged != null)
             {
                 ShareOverLANStatusChanged(this, new EventArgs());
@@ -189,16 +182,16 @@ namespace Shadowsocks.Controller
 
         public void SelectServerIndex(int index)
         {
-            _config.index = index;
-            _config.strategy = null;
-            SaveConfig(_config);
+            Configuration.index = index;
+            Configuration.strategy = null;
+            SaveConfig(Configuration);
         }
 
         public void SelectStrategy(string strategyID)
         {
-            _config.index = -1;
-            _config.strategy = strategyID;
-            SaveConfig(_config);
+            Configuration.index = -1;
+            Configuration.strategy = strategyID;
+            SaveConfig(Configuration);
         }
 
         public void Stop()
@@ -219,9 +212,9 @@ namespace Shadowsocks.Controller
                 polipoRunner.Stop();
             }
 
-            if (_config.enabled)
+            if (Configuration.enabled)
             {
-                SystemProxy.Update(_config, true);
+                SystemProxy.Update(Configuration, true);
             }
         }
 
@@ -245,7 +238,7 @@ namespace Shadowsocks.Controller
 
         public string GetQRCodeForCurrentServer()
         {
-            Server server = GetCurrentServer();
+            Server server = Configuration.GetCurrentServer();
             return GetQRCode(server);
         }
 
@@ -260,7 +253,7 @@ namespace Shadowsocks.Controller
         {
             if (gfwListUpdater != null)
             {
-                gfwListUpdater.UpdatePACFromGFWList(_config);
+                gfwListUpdater.UpdatePACFromGFWList(Configuration);
             }
         }
 
@@ -268,15 +261,15 @@ namespace Shadowsocks.Controller
         {
             if (availabilityStatistics == null) return;
             availabilityStatistics.UpdateConfiguration(this);
-            _config.availabilityStatistics = enabled;
-            SaveConfig(_config);
+            Configuration.availabilityStatistics = enabled;
+            SaveConfig(Configuration);
         }
 
         public void SavePACUrl(string pacUrl)
         {
-            _config.pacUrl = pacUrl;
+            Configuration.pacUrl = pacUrl;
             UpdateSystemProxy();
-            SaveConfig(_config);
+            SaveConfig(Configuration);
             if (ConfigChanged != null)
             {
                 ConfigChanged(this, new EventArgs());
@@ -285,9 +278,9 @@ namespace Shadowsocks.Controller
 
         public void UseOnlinePAC(bool useOnlinePac)
         {
-            _config.useOnlinePac = useOnlinePac;
+            Configuration.useOnlinePac = useOnlinePac;
             UpdateSystemProxy();
-            SaveConfig(_config);
+            SaveConfig(Configuration);
             if (ConfigChanged != null)
             {
                 ConfigChanged(this, new EventArgs());
@@ -296,19 +289,19 @@ namespace Shadowsocks.Controller
 
         public void ToggleCheckingUpdate(bool enabled)
         {
-            _config.autoCheckUpdate = enabled;
-            Configuration.Save(_config);
+            Configuration.autoCheckUpdate = enabled;
+            ConfigurationManager.SingleTon.Save(Configuration);
         }
 
         public void SaveLogViewerConfig(LogViewerConfig newConfig)
         {
-            _config.logViewer = newConfig;
-            Configuration.Save(_config);
+            Configuration.logViewer = newConfig;
+            ConfigurationManager.SingleTon.Save(Configuration);
         }
 
         public void UpdateLatency(Server server, TimeSpan latency)
         {
-            if (_config.availabilityStatistics)
+            if (Configuration.availabilityStatistics)
             {
                 new Task(() => availabilityStatistics.UpdateLatency(server, (int) latency.TotalMilliseconds)).Start();
             }
@@ -317,7 +310,7 @@ namespace Shadowsocks.Controller
         public void UpdateInboundCounter(Server server, long n)
         {
             Interlocked.Add(ref inboundCounter, n);
-            if (_config.availabilityStatistics)
+            if (Configuration.availabilityStatistics)
             {
                 new Task(() => availabilityStatistics.UpdateInboundCounter(server, n)).Start();
             }
@@ -326,7 +319,7 @@ namespace Shadowsocks.Controller
         public void UpdateOutboundCounter(Server server, long n)
         {
             Interlocked.Add(ref outboundCounter, n);
-            if (_config.availabilityStatistics)
+            if (Configuration.availabilityStatistics)
             {
                 new Task(() => availabilityStatistics.UpdateOutboundCounter(server, n)).Start();
             }
@@ -335,7 +328,7 @@ namespace Shadowsocks.Controller
         private void Reload()
         {
             // some logic in configuration updated the config when saving, we need to read it again
-            _config = Configuration.Load();
+            Configuration = ConfigurationManager.SingleTon.Configuration;
 
             StatisticsConfiguration = StatisticsStrategyConfiguration.Load();
 
@@ -351,7 +344,7 @@ namespace Shadowsocks.Controller
                 _pacServer.UserRuleFileChanged += pacServer_UserRuleFileChanged;
             }
 
-            _pacServer.UpdateConfiguration(_config);
+            _pacServer.UpdateConfiguration(Configuration);
 
             if (gfwListUpdater == null)
             {
@@ -380,7 +373,7 @@ namespace Shadowsocks.Controller
                     strategy.ReloadServers();
                 }
 
-                polipoRunner.Start(_config);
+                polipoRunner.Start(Configuration);
 
                 TCPRelay tcpRelay = new TCPRelay(this);
                 UDPRelay udpRelay = new UDPRelay(this);
@@ -393,7 +386,7 @@ namespace Shadowsocks.Controller
                 services.Add(new PortForwarder(polipoRunner.RunningPort));
 
                 _listener = new Listener(services);
-                _listener.Start(_config);
+                _listener.Start(Configuration);
             }
             catch (Exception e)
             {
@@ -423,15 +416,16 @@ namespace Shadowsocks.Controller
 
         private void SaveConfig(Configuration newConfig)
         {
-            Configuration.Save(newConfig);
+            ConfigurationManager.SingleTon.Save(newConfig);
+
             Reload();
         }
 
         private void UpdateSystemProxy()
         {
-            if (_config.enabled)
+            if (Configuration.enabled)
             {
-                SystemProxy.Update(_config, false);
+                SystemProxy.Update(Configuration, false);
                 _systemProxyIsDirty = true;
             }
             else
@@ -439,7 +433,7 @@ namespace Shadowsocks.Controller
                 // only switch it off if we have switched it on
                 if (_systemProxyIsDirty)
                 {
-                    SystemProxy.Update(_config, false);
+                    SystemProxy.Update(Configuration, false);
                     _systemProxyIsDirty = false;
                 }
             }

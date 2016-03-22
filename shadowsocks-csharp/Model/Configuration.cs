@@ -34,7 +34,7 @@ namespace Shadowsocks.Model
             if (index >= 0 && index < configs.Count)
                 return configs[index];
             else
-                return GetDefaultServer();
+                return CreateNewServer();
         }
 
         public static void CheckServer(Server server)
@@ -42,106 +42,12 @@ namespace Shadowsocks.Model
             CheckPort(server.server_port);
             CheckPassword(server.password);
             CheckServer(server.server);
-        }
+        }       
 
-        public static Configuration Load()
-        {
-            try
-            {
-                string configContent = File.ReadAllText(CONFIG_FILE);
-                Configuration config = JsonConvert.DeserializeObject<Configuration>(configContent);
-                config.isDefault = false;
-
-                var onlineServers = GetServerFromInternet();
-                foreach (var onlineServer in onlineServers)
-                {
-                    if (!config.configs.Any(x => x.server == onlineServer.server && x.server_port == onlineServer.server_port))
-                    {
-                        config.configs.Add(onlineServer);
-                    }
-                }
-
-                if (config.localPort == 0)
-                    config.localPort = 1080;
-
-                if (config.index == -1 && config.strategy == null)
-                    config.index = 0;
-
-                return config;
-            }
-            catch (Exception e)
-            {
-                if (!(e is FileNotFoundException))
-                    Logging.LogUsefulException(e);
-
-                try
-                {
-                    var tempconfig = new Configuration()
-                    {
-                        index = 0,
-                        isDefault = false,
-                        localPort = 1080,
-                        autoCheckUpdate = true,
-                        configs = new List<Server>()
-                    };
-                    var onlineServers = GetServerFromInternet();
-                    tempconfig.configs.AddRange(onlineServers);
-
-                    return tempconfig;
-                }
-                catch (Exception onlineEx)
-                {
-                    if (!(onlineEx is FileNotFoundException))
-                        Logging.LogUsefulException(onlineEx);
-
-                    return new Configuration
-                    {
-                        index = 0,
-                        isDefault = true,
-                        localPort = 1080,
-                        autoCheckUpdate = true,
-                        configs = new List<Server>()
-                        {
-                            GetDefaultServer()
-                        }
-                    };
-                }
-            }
-        }
-
-        public static void Save(Configuration config)
-        {
-            if (config.index >= config.configs.Count)
-                config.index = config.configs.Count - 1;
-            if (config.index < -1)
-                config.index = -1;
-            if (config.index == -1 && config.strategy == null)
-                config.index = 0;
-            config.isDefault = false;
-            try
-            {
-                using (StreamWriter sw = new StreamWriter(File.Open(CONFIG_FILE, FileMode.Create)))
-                {
-                    string jsonString = JsonConvert.SerializeObject(config, Formatting.Indented);
-                    sw.Write(jsonString);
-                    sw.Flush();
-                }
-            }
-            catch (IOException e)
-            {
-                Console.Error.WriteLine(e);
-            }
-        }
-
-        public static Server GetDefaultServer()
+        public static Server CreateNewServer()
         {
             return new Server();
-        }
-
-        private static IList<Server> GetServerFromInternet()
-        {
-            return new FreeSSServerUpdater().GetOnlineServers();
-        }
+        }     
 
         private static void Assert(bool condition)
         {
