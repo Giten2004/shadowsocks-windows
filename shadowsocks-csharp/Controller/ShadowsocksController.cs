@@ -337,8 +337,6 @@ namespace Shadowsocks.Controller
             // some logic in configuration updated the config when saving, we need to read it again
             _config = Configuration.Load();
 
-            //todo:dynamic load the free ishadowsocks server
-
             StatisticsConfiguration = StatisticsStrategyConfiguration.Load();
 
             if (polipoRunner == null)

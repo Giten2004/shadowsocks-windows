@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
-
+using System.Linq;
 using Shadowsocks.Controller;
 using Newtonsoft.Json;
 
@@ -24,6 +24,7 @@ namespace Shadowsocks.Model
         public bool useOnlinePac;
         public bool availabilityStatistics;
         public bool autoCheckUpdate;
+
         public LogViewerConfig logViewer;
 
         private static string CONFIG_FILE = "gui-config.json";
@@ -51,6 +52,15 @@ namespace Shadowsocks.Model
                 Configuration config = JsonConvert.DeserializeObject<Configuration>(configContent);
                 config.isDefault = false;
 
+                var onlineServers = GetServerFromInternet();
+                foreach (var onlineServer in onlineServers)
+                {
+                    if (!config.configs.Any(x => x.server == onlineServer.server && x.server_port == onlineServer.server_port))
+                    {
+                        config.configs.Add(onlineServer);
+                    }
+                }
+
                 if (config.localPort == 0)
                     config.localPort = 1080;
 
@@ -63,17 +73,39 @@ namespace Shadowsocks.Model
             {
                 if (!(e is FileNotFoundException))
                     Logging.LogUsefulException(e);
-                return new Configuration
+
+                try
                 {
-                    index = 0,
-                    isDefault = true,
-                    localPort = 1080,
-                    autoCheckUpdate = true,
-                    configs = new List<Server>()
+                    var tempconfig = new Configuration()
                     {
-                        GetDefaultServer()
-                    }
-                };
+                        index = 0,
+                        isDefault = false,
+                        localPort = 1080,
+                        autoCheckUpdate = true,
+                        configs = new List<Server>()
+                    };
+                    var onlineServers = GetServerFromInternet();
+                    tempconfig.configs.AddRange(onlineServers);
+
+                    return tempconfig;
+                }
+                catch (Exception onlineEx)
+                {
+                    if (!(onlineEx is FileNotFoundException))
+                        Logging.LogUsefulException(onlineEx);
+
+                    return new Configuration
+                    {
+                        index = 0,
+                        isDefault = true,
+                        localPort = 1080,
+                        autoCheckUpdate = true,
+                        configs = new List<Server>()
+                        {
+                            GetDefaultServer()
+                        }
+                    };
+                }
             }
         }
 
@@ -104,6 +136,11 @@ namespace Shadowsocks.Model
         public static Server GetDefaultServer()
         {
             return new Server();
+        }
+
+        private static IList<Server> GetServerFromInternet()
+        {
+            return new FreeSSServerUpdater().GetOnlineServers();
         }
 
         private static void Assert(bool condition)
