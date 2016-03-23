@@ -51,7 +51,6 @@ namespace Shadowsocks
                 Logging.OpenLogFile();
 #endif
 
-
                 ShadowsocksController controller = new ShadowsocksController();
                 MenuViewController viewController = new MenuViewController(controller);
 

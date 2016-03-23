@@ -27,8 +27,6 @@ namespace Shadowsocks.Model
 
         public LogViewerConfig logViewer;
 
-        private static string CONFIG_FILE = "gui-config.json";
-
         public Server GetCurrentServer()
         {
             if (index >= 0 && index < configs.Count)

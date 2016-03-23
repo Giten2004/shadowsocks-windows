@@ -12,10 +12,11 @@ namespace Shadowsocks.Controller
 {
     class CheckUpdateTimer : System.Timers.Timer
     {
-        public Configuration config;
+        public Configuration Configuration { get; private set; }
 
-        public CheckUpdateTimer(int p) : base(p)
+        public CheckUpdateTimer(Configuration config, int p) : base(p)
         {
+            Configuration = config;
         }
     }
 
@@ -26,38 +27,45 @@ namespace Shadowsocks.Controller
 
         public const string Version = "3.0";
 
-        private Configuration config;
+        private Configuration _configuration;
 
         public bool NewVersionFound;
         public string LatestVersionNumber;
-        public string LatestVersionName;
-        public string LatestVersionURL;
+        private string _latestVersionName;
+        private string _latestVersionURL;
         public string LatestVersionLocalName;
 
         public event EventHandler CheckUpdateCompleted;
 
+        private void OnCheckUpdateCompleted(EventArgs e)
+        {
+            if (CheckUpdateCompleted != null)
+            {
+                CheckUpdateCompleted(this, e);
+            }
+        }
+
         public void CheckUpdate(Configuration config, int delay)
         {
-            CheckUpdateTimer timer = new CheckUpdateTimer(delay);
+            CheckUpdateTimer timer = new CheckUpdateTimer(config, delay);
             timer.AutoReset = false;
             timer.Elapsed += Timer_Elapsed;
-            timer.config = config;
             timer.Enabled = true;
         }
 
         private void Timer_Elapsed(object sender, System.Timers.ElapsedEventArgs e)
         {
             CheckUpdateTimer timer = (CheckUpdateTimer)sender;
-            Configuration config = timer.config;
             timer.Elapsed -= Timer_Elapsed;
             timer.Enabled = false;
             timer.Dispose();
-            CheckUpdate(config);
+
+            CheckUpdate(timer.Configuration);
         }
 
-        public void CheckUpdate(Configuration config)
+        private void CheckUpdate(Configuration config)
         {
-            this.config = config;
+            this._configuration = config;
 
             try
             {
@@ -79,8 +87,8 @@ namespace Shadowsocks.Controller
                 string response = e.Result;
 
                 JArray result = JArray.Parse(response);
-
                 List<Asset> asserts = new List<Asset>();
+
                 if (result != null)
                 {
                     foreach (JObject release in result)
@@ -89,10 +97,12 @@ namespace Shadowsocks.Controller
                         {
                             continue;
                         }
+
                         foreach (JObject asset in (JArray)release["assets"])
                         {
                             Asset ass = new Asset();
                             ass.Parse(asset);
+
                             if (ass.IsNewVersion(Version))
                             {
                                 asserts.Add(ass);
@@ -100,24 +110,23 @@ namespace Shadowsocks.Controller
                         }
                     }
                 }
+
                 if (asserts.Count != 0)
                 {
                     SortByVersions(asserts);
+
                     Asset asset = asserts[asserts.Count - 1];
                     NewVersionFound = true;
-                    LatestVersionURL = asset.browser_download_url;
+                    _latestVersionURL = asset.browser_download_url;
                     LatestVersionNumber = asset.version;
-                    LatestVersionName = asset.name;
+                    _latestVersionName = asset.name;
 
                     startDownload();
                 }
                 else
                 {
                     Logging.Debug("No update is available");
-                    if (CheckUpdateCompleted != null)
-                    {
-                        CheckUpdateCompleted(this, new EventArgs());
-                    }
+                    OnCheckUpdateCompleted(EventArgs.Empty);
                 }
             }
             catch (Exception ex)
@@ -130,10 +139,10 @@ namespace Shadowsocks.Controller
         {
             try
             {
-                LatestVersionLocalName = Utils.GetTempPath(LatestVersionName);
+                LatestVersionLocalName = Utils.GetTempPath(_latestVersionName);
                 WebClient http = CreateWebClient();
                 http.DownloadFileCompleted += Http_DownloadFileCompleted;
-                http.DownloadFileAsync(new Uri(LatestVersionURL), LatestVersionLocalName);
+                http.DownloadFileAsync(new Uri(_latestVersionURL), LatestVersionLocalName);
             }
             catch (Exception ex)
             {
@@ -150,11 +159,10 @@ namespace Shadowsocks.Controller
                     Logging.LogUsefulException(e.Error);
                     return;
                 }
+
                 Logging.Debug($"New version {LatestVersionNumber} found: {LatestVersionLocalName}");
-                if (CheckUpdateCompleted != null)
-                {
-                    CheckUpdateCompleted(this, new EventArgs());
-                }
+
+                OnCheckUpdateCompleted(EventArgs.Empty);
             }
             catch (Exception ex)
             {
@@ -166,7 +174,8 @@ namespace Shadowsocks.Controller
         {
             WebClient http = new WebClient();
             http.Headers.Add("User-Agent", UserAgent);
-            http.Proxy = new WebProxy(IPAddress.Loopback.ToString(), config.localPort);
+            if (_configuration != null)
+                http.Proxy = new WebProxy(IPAddress.Loopback.ToString(), _configuration.localPort);
             return http;
         }
 
@@ -189,10 +198,12 @@ namespace Shadowsocks.Controller
             {
                 return false;
             }
+
             if (version == null)
             {
                 return false;
             }
+
             return CompareVersion(version, currentVersion) > 0;
         }
 

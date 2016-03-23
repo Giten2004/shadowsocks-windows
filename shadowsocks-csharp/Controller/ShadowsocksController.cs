@@ -35,12 +35,13 @@ namespace Shadowsocks.Controller
 
         private Listener _listener;
         private PACServer _pacServer;
-        public Configuration Configuration { get; private set; }
         private StrategyManager _strategyManager;
         private PolipoRunner polipoRunner;
         private GFWListUpdater gfwListUpdater;
 
         public AvailabilityStatistics availabilityStatistics = AvailabilityStatistics.Instance;
+
+        public Configuration Configuration { get; private set; }
         public StatisticsStrategyConfiguration StatisticsConfiguration { get; private set; }
 
         public long inboundCounter = 0;
@@ -76,13 +77,6 @@ namespace Shadowsocks.Controller
         public void Start()
         {
             Reload();
-        }
-
-        // always return copy
-        //todo: stupid!!!!!! reafactor
-        public Configuration GetConfigurationCopy()
-        {
-            return ConfigurationManager.SingleTon.CloneConfiguration();
         }
 
         public IList<IStrategy> GetStrategies()
