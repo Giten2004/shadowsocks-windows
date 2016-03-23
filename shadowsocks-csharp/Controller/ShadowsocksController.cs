@@ -96,7 +96,7 @@ namespace Shadowsocks.Controller
             return null;
         }
 
-        public Server GetAServer(IStrategyCallerType type, IPEndPoint localIPEndPoint)
+        public Server GetAServer(StrategyCallerType type, IPEndPoint localIPEndPoint)
         {
             IStrategy strategy = GetCurrentStrategy();
             if (strategy != null)
@@ -264,10 +264,8 @@ namespace Shadowsocks.Controller
             Configuration.pacUrl = pacUrl;
             UpdateSystemProxy();
             SaveConfig(Configuration);
-            if (ConfigChanged != null)
-            {
-                ConfigChanged(this, new EventArgs());
-            }
+
+            OnConfigChanged(EventArgs.Empty);
         }
 
         public void UseOnlinePAC(bool useOnlinePac)
@@ -275,10 +273,8 @@ namespace Shadowsocks.Controller
             Configuration.useOnlinePac = useOnlinePac;
             UpdateSystemProxy();
             SaveConfig(Configuration);
-            if (ConfigChanged != null)
-            {
-                ConfigChanged(this, new EventArgs());
-            }
+
+            OnConfigChanged(EventArgs.Empty);
         }
 
         public void ToggleCheckingUpdate(bool enabled)
@@ -398,10 +394,7 @@ namespace Shadowsocks.Controller
                 ReportError(e);
             }
 
-            if (ConfigChanged != null)
-            {
-                ConfigChanged(this, new EventArgs());
-            }
+            OnConfigChanged(EventArgs.Empty);
 
             UpdateSystemProxy();
 
@@ -451,6 +444,7 @@ namespace Shadowsocks.Controller
         }
 
         private static readonly IEnumerable<char> IgnoredLineBegins = new[] { '!', '[' };
+
         private void pacServer_UserRuleFileChanged(object sender, EventArgs e)
         {
             // TODO: this is a dirty hack. (from code GListUpdater.http_DownloadStringCompleted())
@@ -517,5 +511,12 @@ namespace Shadowsocks.Controller
                 Errored(this, new ErrorEventArgs(e));
             }
         }
+
+        private void OnConfigChanged(EventArgs e)
+        {
+            if (ConfigChanged != null)
+                ConfigChanged(this, e);
+        }
+        
     }
 }

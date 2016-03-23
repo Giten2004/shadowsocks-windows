@@ -363,7 +363,7 @@ namespace Shadowsocks.Controller
 
         private void ChooseServer()
         {
-            Server server = _ssController.GetAServer(IStrategyCallerType.TCP, (IPEndPoint)_connection.RemoteEndPoint);
+            Server server = _ssController.GetAServer(StrategyCallerType.TCP, (IPEndPoint)_connection.RemoteEndPoint);
             if (server == null || server.server == "")
             {
                 throw new ArgumentException("No server configured");

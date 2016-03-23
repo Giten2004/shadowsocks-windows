@@ -8,20 +8,20 @@ namespace Shadowsocks.Controller
     public class ServerStatus
     {
         // time interval between SYN and SYN+ACK
-        public TimeSpan latency;
-        public DateTime lastTimeDetectLatency;
+        public TimeSpan Latency { get; set; }
+        public DateTime LastTimeDetectLatency { get; set; }
 
         // last time anything received
-        public DateTime lastRead;
+        public DateTime LastRead { get; set; }
 
         // last time anything sent
-        public DateTime lastWrite;
+        public DateTime LastWrite { get; set; }
 
         // connection refused or closed before anything received
-        public DateTime lastFailure;
+        public DateTime LastFailure { get; set; }
 
-        public Server server;
+        public Server Server { get; set; }
 
-        public double score;
+        public double Score { get; set; }
     }
 }

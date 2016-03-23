@@ -655,6 +655,7 @@ namespace Shadowsocks.View
         {
             _configForm = null;
             Utils.ReleaseMemory(true);
+
             if (_isFirstRun)
             {
                 CheckUpdateForFirstRun();
@@ -677,7 +678,7 @@ namespace Shadowsocks.View
             _notifyIcon.BalloonTipTitle = I18N.GetString("Shadowsocks is here");
             _notifyIcon.BalloonTipText = I18N.GetString("You can turn on/off Shadowsocks in the context menu");
             _notifyIcon.BalloonTipIcon = ToolTipIcon.Info;
-            _notifyIcon.ShowBalloonTip(0);
+            _notifyIcon.ShowBalloonTip(1000);
         }
 
         private void splash_FormClosed(object sender, FormClosedEventArgs e)

@@ -19,52 +19,6 @@ namespace Shadowsocks.Controller.Strategy
             _serverStatus = new Dictionary<Server, ServerStatus>();
         }
 
-        /**
-        * once failed, try after 5 min
-        * and (last write - last read) < 5s
-        * and (now - last read) <  5s  // means not stuck
-        * and latency < 200ms, try after 30s
-        */
-        public void ChooseNewServer()
-        {
-            ServerStatus oldServer = _currentServer;
-            List<ServerStatus> servers = new List<ServerStatus>(_serverStatus.Values);
-            DateTime now = DateTime.Now;
-            foreach (var status in servers)
-            {
-                // all of failure, latency, (lastread - lastwrite) normalized to 1000, then
-                // 100 * failure - 2 * latency - 0.5 * (lastread - lastwrite)
-                status.score =
-                    100 * 1000 * Math.Min(5 * 60, (now - status.lastFailure).TotalSeconds)
-                    - 2 * 5 * (Math.Min(2000, status.latency.TotalMilliseconds) / (1 + (now - status.lastTimeDetectLatency).TotalSeconds / 30 / 10) +
-                    -0.5 * 200 * Math.Min(5, (status.lastRead - status.lastWrite).TotalSeconds));
-                Logging.Debug(String.Format("server: {0} latency:{1} score: {2}", status.server.FriendlyName(), status.latency, status.score));
-            }
-            ServerStatus max = null;
-            foreach (var status in servers)
-            {
-                if (max == null)
-                {
-                    max = status;
-                }
-                else
-                {
-                    if (status.score >= max.score)
-                    {
-                        max = status;
-                    }
-                }
-            }
-            if (max != null)
-            {
-                if (_currentServer == null || max.score - _currentServer.score > 200)
-                {
-                    _currentServer = max;
-                    Logging.Info($"HA switching to server: {_currentServer.server.FriendlyName()}");
-                }
-            }
-        }
-
         #region Implement methods of interface IStrategy
 
         public string Name
@@ -80,54 +34,57 @@ namespace Shadowsocks.Controller.Strategy
         public void ReloadServers()
         {
             // make a copy to avoid locking
-            var newServerStatus = new Dictionary<Server, ServerStatus>(_serverStatus);
+            var serverStatusDic = new Dictionary<Server, ServerStatus>(_serverStatus);
 
             foreach (var server in _controller.Configuration.configs)
             {
-                if (!newServerStatus.ContainsKey(server))
+                if (!serverStatusDic.ContainsKey(server))
                 {
                     var status = new ServerStatus();
-                    status.server = server;
-                    status.lastFailure = DateTime.MinValue;
-                    status.lastRead = DateTime.Now;
-                    status.lastWrite = DateTime.Now;
-                    status.latency = new TimeSpan(0, 0, 0, 0, 10);
-                    status.lastTimeDetectLatency = DateTime.Now;
-                    newServerStatus[server] = status;
+                    status.Server = server;
+                    status.LastFailure = DateTime.MinValue;
+                    status.LastRead = DateTime.Now;
+                    status.LastWrite = DateTime.Now;
+                    status.Latency = new TimeSpan(0, 0, 0, 0, 10);
+                    status.LastTimeDetectLatency = DateTime.Now;
+
+                    serverStatusDic[server] = status;
                 }
                 else
                 {
                     // update settings for existing server
-                    newServerStatus[server].server = server;
+                    serverStatusDic[server].Server = server;
                 }
             }
-            _serverStatus = newServerStatus;
+            _serverStatus = serverStatusDic;
 
             ChooseNewServer();
         }
 
-        public Server GetAServer(IStrategyCallerType type, System.Net.IPEndPoint localIPEndPoint)
+        public Server GetAServer(StrategyCallerType type, System.Net.IPEndPoint localIPEndPoint)
         {
-            if (type == IStrategyCallerType.TCP)
+            if (type == StrategyCallerType.TCP)
             {
                 ChooseNewServer();
             }
+
             if (_currentServer == null)
             {
                 return null;
             }
-            return _currentServer.server;
+
+            return _currentServer.Server;
         }
 
-        public void UpdateLatency(Model.Server server, TimeSpan latency)
+        public void UpdateLatency(Server server, TimeSpan latency)
         {
             Logging.Debug($"latency: {server.FriendlyName()} {latency}");
 
             ServerStatus status;
             if (_serverStatus.TryGetValue(server, out status))
             {
-                status.latency = latency;
-                status.lastTimeDetectLatency = DateTime.Now;
+                status.Latency = latency;
+                status.LastTimeDetectLatency = DateTime.Now;
             }
         }
 
@@ -138,7 +95,7 @@ namespace Shadowsocks.Controller.Strategy
             ServerStatus status;
             if (_serverStatus.TryGetValue(server, out status))
             {
-                status.lastRead = DateTime.Now;
+                status.LastRead = DateTime.Now;
             }
         }
 
@@ -149,7 +106,7 @@ namespace Shadowsocks.Controller.Strategy
             ServerStatus status;
             if (_serverStatus.TryGetValue(server, out status))
             {
-                status.lastWrite = DateTime.Now;
+                status.LastWrite = DateTime.Now;
             }
         }
 
@@ -160,10 +117,57 @@ namespace Shadowsocks.Controller.Strategy
             ServerStatus status;
             if (_serverStatus.TryGetValue(server, out status))
             {
-                status.lastFailure = DateTime.Now;
+                status.LastFailure = DateTime.Now;
             }
         }
 
         #endregion
+
+        /**
+       * once failed, try after 5 min
+       * and (last write - last read) < 5s
+       * and (now - last read) <  5s  // means not stuck
+       * and latency < 200ms, try after 30s
+       */
+        private void ChooseNewServer()
+        {
+            ServerStatus oldServer = _currentServer;
+            List<ServerStatus> servers = new List<ServerStatus>(_serverStatus.Values);
+            DateTime now = DateTime.Now;
+            foreach (var status in servers)
+            {
+                // all of failure, latency, (lastread - lastwrite) normalized to 1000, then
+                // 100 * failure - 2 * latency - 0.5 * (lastread - lastwrite)
+                status.Score =
+                    100 * 1000 * Math.Min(5 * 60, (now - status.LastFailure).TotalSeconds)
+                    - 2 * 5 * (Math.Min(2000, status.Latency.TotalMilliseconds) / (1 + (now - status.LastTimeDetectLatency).TotalSeconds / 30 / 10) +
+                    -0.5 * 200 * Math.Min(5, (status.LastRead - status.LastWrite).TotalSeconds));
+
+                Logging.Debug(String.Format("server: {0} latency:{1} score: {2}", status.Server.FriendlyName(), status.Latency, status.Score));
+            }
+            ServerStatus max = null;
+            foreach (var status in servers)
+            {
+                if (max == null)
+                {
+                    max = status;
+                }
+                else
+                {
+                    if (status.Score >= max.Score)
+                    {
+                        max = status;
+                    }
+                }
+            }
+            if (max != null)
+            {
+                if (_currentServer == null || max.Score - _currentServer.Score > 200)
+                {
+                    _currentServer = max;
+                    Logging.Info($"HA switching to server: {_currentServer.Server.FriendlyName()}");
+                }
+            }
+        }
     }
 }

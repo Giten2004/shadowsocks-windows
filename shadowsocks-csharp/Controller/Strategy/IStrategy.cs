@@ -6,7 +6,7 @@ using System.Text;
 
 namespace Shadowsocks.Controller.Strategy
 {
-    public enum IStrategyCallerType
+    public enum StrategyCallerType
     {
         TCP,
         UDP
@@ -31,7 +31,7 @@ namespace Shadowsocks.Controller.Strategy
         /*
          * Get a new server to use in TCPRelay or UDPRelay
          */
-        Server GetAServer(IStrategyCallerType type, IPEndPoint localIPEndPoint);
+        Server GetAServer(StrategyCallerType type, IPEndPoint localIPEndPoint);
 
         /*
          * TCPRelay will call this when latency of a server detected

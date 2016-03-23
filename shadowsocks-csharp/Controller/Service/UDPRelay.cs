@@ -42,7 +42,7 @@ namespace Shadowsocks.Controller
             UDPRelayHandler handler = _cache.get(remoteEndPoint);
             if (handler == null)
             {
-                handler = new UDPRelayHandler(socket, _controller.GetAServer(IStrategyCallerType.UDP, remoteEndPoint), remoteEndPoint);
+                handler = new UDPRelayHandler(socket, _controller.GetAServer(StrategyCallerType.UDP, remoteEndPoint), remoteEndPoint);
                 _cache.add(remoteEndPoint, handler);
             }
 
